@@ -241,16 +241,65 @@ textarea::placeholder {
   border-radius: 14px;
   padding: 12px;
   margin-bottom: 10px;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
 }
 
 .order-card h4 {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .order-card p {
   color: var(--muted);
-  margin-bottom: 10px;
   font-size: 0.92rem;
+}
+
+.order-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-pending {
+  background: rgba(255, 184, 77, 0.16);
+  color: var(--warning);
+}
+
+.status-inprogress {
+  background: rgba(79, 140, 255, 0.16);
+  color: var(--accent);
+}
+
+.status-completed {
+  background: rgba(36, 197, 154, 0.16);
+  color: var(--accent-2);
+}
+
+.order-details {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .order-actions {
@@ -263,6 +312,156 @@ textarea::placeholder {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-size: 0.85rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 8, 15, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  position: relative;
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.modal-tab {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.modal-tab.active-section {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.nav-arrow-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.nav-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.modal-content-area {
+  position: relative;
+  min-height: 200px;
+  margin-bottom: 16px;
+}
+
+.modal-section {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: none;
+}
+
+.modal-section.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.modal-grid > div {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.modal-image-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  text-align: center;
+}
+
+.mock-image {
+  margin-top: 8px;
+  font-size: 2rem;
 }
 
 @media (max-width: 900px) {
@@ -321,5 +520,31 @@ textarea::placeholder {
 
   .form-actions {
     flex-direction: column;
+  }
+
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-nav-bar {
+    flex-wrap: wrap;
+  }
+
+  .modal-tabs {
+    width: 100%;
+    order: 3;
+  }
+
+  .nav-arrow-btn {
+    flex: 1;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-footer {
+    justify-content: flex-start;
   }
 }

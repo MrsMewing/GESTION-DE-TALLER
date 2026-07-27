@@ -61,6 +61,66 @@
       </main>
     </div>
 
+    <div id="order-modal" class="modal hidden" aria-hidden="true">
+      <div class="modal-content">
+        <button id="close-modal-btn" class="close-modal-btn" aria-label="Cerrar">×</button>
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Detalle de orden</p>
+            <h3 id="modal-title">Orden</h3>
+          </div>
+        </div>
+
+        <div class="modal-nav-bar">
+          <button id="prev-section-btn" class="nav-arrow-btn" aria-label="Sección anterior">← Anterior</button>
+          <div class="modal-tabs">
+            <button class="modal-tab active-section" data-section="0">Informe del equipo</button>
+            <button class="modal-tab" data-section="1">Informe del dueño</button>
+            <button class="modal-tab" data-section="2">Detalles de la falla</button>
+          </div>
+          <button id="next-section-btn" class="nav-arrow-btn" aria-label="Siguiente sección">Siguiente →</button>
+        </div>
+
+        <div class="modal-content-area">
+          <section class="modal-section active" data-section="0">
+            <h4>Informe del equipo</h4>
+            <div class="modal-grid">
+              <div><strong>Fecha de ingreso:</strong> <span id="modal-date"></span></div>
+              <div><strong>Nombre del equipo:</strong> <span id="modal-equipment"></span></div>
+              <div><strong>Accesorios:</strong> <span id="modal-accessories"></span></div>
+              <div><strong>Precio de reparación:</strong> <span id="modal-price"></span></div>
+            </div>
+            <div class="modal-image-box">
+              <p>Foto del equipo ingresado</p>
+              <div class="mock-image">📷</div>
+            </div>
+          </section>
+
+          <section class="modal-section" data-section="1">
+            <h4>Informe del dueño</h4>
+            <div class="modal-grid">
+              <div><strong>Nombre del cliente:</strong> <span id="modal-owner"></span></div>
+              <div><strong>Teléfono:</strong> <span id="modal-phone"></span></div>
+              <div><strong>Dirección:</strong> <span id="modal-address"></span></div>
+            </div>
+          </section>
+
+          <section class="modal-section" data-section="2">
+            <h4>Detalles de la falla</h4>
+            <div class="modal-grid">
+              <div><strong>Problema principal:</strong> <span id="modal-problem"></span></div>
+              <div><strong>Descripción de la falla:</strong> <span id="modal-description"></span></div>
+              <div><strong>Fallas extras:</strong> <span id="modal-extra"></span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="modal-footer">
+          <button id="change-status-btn" class="primary-btn">Cambiar estado</button>
+        </div>
+      </div>
+    </div>
+
     <script src="script.js"></script>
   </body>
 </html>

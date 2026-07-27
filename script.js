@@ -19,6 +19,17 @@ const initialState = {
         id: crypto.randomUUID(),
         title: "Instalación de sensor",
         description: "Pendiente de asignación de personal.",
+        equipment: "Equipo A-14",
+        date: "2026-07-19",
+        owner: "Carlos Vega",
+        phone: "300 123 4567",
+        address: "Calle 10 #20-30",
+        accessories: "Cable, cargador, manual",
+        price: "$120.000",
+        problem: "No enciende",
+        faultDescription: "El equipo no responde al encenderlo y muestra error de batería.",
+        extraFaults: "Puertos con desgaste leve",
+        status: "Pendiente",
       },
     ],
     inProgress: [
@@ -26,6 +37,17 @@ const initialState = {
         id: crypto.randomUUID(),
         title: "Calibración de tablero",
         description: "En proceso con revisión del supervisor.",
+        equipment: "Tablero X-02",
+        date: "2026-07-21",
+        owner: "Ana López",
+        phone: "311 555 8899",
+        address: "Avenida Central 45",
+        accessories: "Fuente de poder",
+        price: "$80.000",
+        problem: "Lectura errónea",
+        faultDescription: "Presenta mediciones inconsistentes durante la prueba inicial.",
+        extraFaults: "Botón de arranque flojo",
+        status: "En proceso",
       },
     ],
     completed: [
@@ -33,6 +55,17 @@ const initialState = {
         id: crypto.randomUUID(),
         title: "Cambio de batería",
         description: "Finalizada y validada por el equipo.",
+        equipment: "Equipo B-08",
+        date: "2026-07-17",
+        owner: "Sofía Ariza",
+        phone: "315 444 7722",
+        address: "Carrera 7 #15-40",
+        accessories: "Batería nueva, tapa",
+        price: "$60.000",
+        problem: "Batería dañada",
+        faultDescription: "La batería ya no retenía carga y generaba cortes frecuentes.",
+        extraFaults: "Ninguna",
+        status: "Terminado",
       },
     ],
   },
@@ -52,6 +85,24 @@ const notesList = document.getElementById("notes-list");
 const ordersBoard = document.getElementById("orders-board");
 const newOrderBtn = document.getElementById("new-order-btn");
 const subTabs = document.querySelectorAll(".subtab");
+const orderModal = document.getElementById("order-modal");
+const closeModalBtn = document.getElementById("close-modal-btn");
+const changeStatusBtn = document.getElementById("change-status-btn");
+const nextSectionBtn = document.getElementById("next-section-btn");
+const prevSectionBtn = document.getElementById("prev-section-btn");
+const modalTitle = document.getElementById("modal-title");
+const modalDate = document.getElementById("modal-date");
+const modalEquipment = document.getElementById("modal-equipment");
+const modalAccessories = document.getElementById("modal-accessories");
+const modalPrice = document.getElementById("modal-price");
+const modalOwner = document.getElementById("modal-owner");
+const modalPhone = document.getElementById("modal-phone");
+const modalAddress = document.getElementById("modal-address");
+const modalProblem = document.getElementById("modal-problem");
+const modalDescription = document.getElementById("modal-description");
+const modalExtra = document.getElementById("modal-extra");
+let selectedOrder = null;
+let activeModalSection = 0;
 
 function loadState() {
   try {
@@ -85,6 +136,15 @@ function renderNotes() {
     .join("");
 }
 
+function getStatusConfig(statusKey) {
+  const map = {
+    pending: { label: "Pendiente", className: "status-pending" },
+    inProgress: { label: "En proceso", className: "status-inprogress" },
+    completed: { label: "Terminado", className: "status-completed" },
+  };
+  return map[statusKey] || map.pending;
+}
+
 function renderOrders() {
   const labels = {
     pending: "Pendientes",
@@ -116,16 +176,27 @@ function renderOrders() {
     </div>
     ${items
       .map(
-        (order) => `
-          <article class="order-card">
-            <h4>${order.title}</h4>
-            <p>${order.description}</p>
-            <div class="order-actions">
-              ${selectedOrderStatus !== "pending" ? `<button class="move-btn" data-action="back" data-order-id="${order.id}" data-from="${selectedOrderStatus}">← Volver</button>` : ""}
-              ${selectedOrderStatus !== "completed" ? `<button class="move-btn" data-action="next" data-order-id="${order.id}" data-from="${selectedOrderStatus}">Siguiente →</button>` : ""}
-            </div>
-          </article>
-        `
+        (order) => {
+          const statusInfo = getStatusConfig(selectedOrderStatus);
+          return `
+            <article class="order-card" data-order-id="${order.id}">
+              <div class="order-meta">
+                <h4>${order.title}</h4>
+                <span class="status-pill ${statusInfo.className}"><span class="status-dot"></span>${statusInfo.label}</span>
+              </div>
+              <p>${order.description}</p>
+              <div class="order-details">
+                <span><strong>Equipo:</strong> ${order.equipment}</span>
+                <span><strong>Falla principal:</strong> ${order.problem}</span>
+                <span><strong>Fecha ingreso:</strong> ${order.date}</span>
+              </div>
+              <div class="order-actions">
+                ${selectedOrderStatus !== "pending" ? `<button class="move-btn" data-action="back" data-order-id="${order.id}" data-from="${selectedOrderStatus}">← Volver</button>` : ""}
+                ${selectedOrderStatus !== "completed" ? `<button class="move-btn" data-action="next" data-order-id="${order.id}" data-from="${selectedOrderStatus}">Siguiente →</button>` : ""}
+              </div>
+            </article>
+          `;
+        }
       )
       .join("")}
   `;
@@ -195,43 +266,132 @@ newOrderBtn.addEventListener("click", (event) => {
   event.preventDefault();
 });
 
-ordersBoard.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-
-  const { action, orderId, from } = button.dataset;
-  const order = Object.values(state.orders)
-    .flat()
-    .find((item) => item.id === orderId);
-
-  if (!order) return;
-
-  const currentList = state.orders[from];
-  const nextStatusMap = {
-    pending: "inProgress",
-    inProgress: "completed",
-  };
-  const previousStatusMap = {
-    inProgress: "pending",
-    completed: "inProgress",
-  };
-
-  if (action === "next") {
-    const nextKey = nextStatusMap[from];
-    if (!nextKey) return;
-    state.orders[from] = currentList.filter((item) => item.id !== orderId);
-    state.orders[nextKey].push(order);
+closeModalBtn.addEventListener("click", closeOrderModal);
+orderModal.addEventListener("click", (event) => {
+  if (event.target === orderModal) {
+    closeOrderModal();
   }
+});
 
-  if (action === "back") {
-    const prevKey = previousStatusMap[from];
-    if (!prevKey) return;
-    state.orders[from] = currentList.filter((item) => item.id !== orderId);
-    state.orders[prevKey].push(order);
-  }
+const modalTabs = document.querySelectorAll(".modal-tab");
+modalTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const sectionIndex = parseInt(tab.dataset.section, 10);
+    showModalSection(sectionIndex);
+  });
+});
 
+nextSectionBtn.addEventListener("click", () => {
+  showModalSection(activeModalSection + 1);
+});
+
+prevSectionBtn.addEventListener("click", () => {
+  showModalSection(activeModalSection - 1);
+});
+
+changeStatusBtn.addEventListener("click", () => {
+  if (!selectedOrder) return;
+  const currentStatus = Object.entries(state.orders).find(([, orders]) => orders.some((item) => item.id === selectedOrder.id));
+  if (!currentStatus) return;
+
+  const [currentKey, orders] = currentStatus;
+  state.orders[currentKey] = orders.filter((item) => item.id !== selectedOrder.id);
+
+  const nextKey = currentKey === "pending" ? "inProgress" : currentKey === "inProgress" ? "completed" : "pending";
+  state.orders[nextKey].push({ ...selectedOrder, status: nextKey === "pending" ? "Pendiente" : nextKey === "inProgress" ? "En proceso" : "Terminado" });
   saveState();
   render();
+  closeOrderModal();
+});
+
+function showModalSection(index) {
+  const sections = Array.from(document.querySelectorAll(".modal-section"));
+  const tabs = Array.from(document.querySelectorAll(".modal-tab"));
+  if (!sections.length) return;
+
+  activeModalSection = (index + sections.length) % sections.length;
+  
+  sections.forEach((section, sectionIndex) => {
+    section.classList.toggle("active", sectionIndex === activeModalSection);
+  });
+  
+  tabs.forEach((tab, tabIndex) => {
+    tab.classList.toggle("active-section", tabIndex === activeModalSection);
+  });
+}
+
+function openOrderModal(orderId) {
+  const allOrders = Object.values(state.orders).flat();
+  const order = allOrders.find((item) => item.id === orderId);
+  if (!order) return;
+
+  selectedOrder = order;
+  modalTitle.textContent = order.title;
+  modalDate.textContent = order.date;
+  modalEquipment.textContent = order.equipment;
+  modalAccessories.textContent = order.accessories;
+  modalPrice.textContent = order.price;
+  modalOwner.textContent = order.owner;
+  modalPhone.textContent = order.phone;
+  modalAddress.textContent = order.address;
+  modalProblem.textContent = order.problem;
+  modalDescription.textContent = order.faultDescription;
+  modalExtra.textContent = order.extraFaults;
+  showModalSection(0);
+  orderModal.classList.remove("hidden");
+  orderModal.setAttribute("aria-hidden", "false");
+}
+
+function closeOrderModal() {
+  orderModal.classList.add("hidden");
+  orderModal.setAttribute("aria-hidden", "true");
+  selectedOrder = null;
+}
+
+ordersBoard.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (button) {
+    const { action, orderId, from } = button.dataset;
+    const order = Object.values(state.orders)
+      .flat()
+      .find((item) => item.id === orderId);
+
+    if (!order) return;
+
+    const currentList = state.orders[from];
+    const nextStatusMap = {
+      pending: "inProgress",
+      inProgress: "completed",
+    };
+    const previousStatusMap = {
+      inProgress: "pending",
+      completed: "inProgress",
+    };
+
+    if (action === "next") {
+      const nextKey = nextStatusMap[from];
+      if (!nextKey) return;
+      state.orders[from] = currentList.filter((item) => item.id !== orderId);
+      state.orders[nextKey].push(order);
+    }
+
+    if (action === "back") {
+      const prevKey = previousStatusMap[from];
+      if (!prevKey) return;
+      state.orders[from] = currentList.filter((item) => item.id !== orderId);
+      state.orders[prevKey].push(order);
+    }
+
+    saveState();
+    render();
+    return;
+  }
+
+  const card = event.target.closest("article[data-order-id]");
+  if (card) {
+    openOrderModal(card.dataset.orderId);
+    return;
+  }
 });
 
 render();
