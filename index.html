@@ -14,8 +14,8 @@
           <h1>Panel de órdenes y notas</h1>
         </div>
         <div class="tab-switcher" role="tablist" aria-label="Secciones de la app">
-          <button class="tab active" data-view="notes" role="tab" aria-selected="true">Notas</button>
           <button class="tab" data-view="orders" role="tab" aria-selected="false">Órdenes</button>
+          <button class="tab active" data-view="notes" role="tab" aria-selected="true">Notas</button>
         </div>
       </header>
 
@@ -47,6 +47,13 @@
               <h2>Sección de órdenes</h2>
               <p>Revisa el estado de cada pedido y avanza su proceso.</p>
             </div>
+            <button id="new-order-btn" class="primary-btn">+ Nueva orden</button>
+          </div>
+
+          <div class="orders-subtabs" role="tablist" aria-label="Subsecciones de órdenes">
+            <button class="subtab active" data-order-status="pending" role="tab" aria-selected="true">Pendientes</button>
+            <button class="subtab" data-order-status="inProgress" role="tab" aria-selected="false">En proceso</button>
+            <button class="subtab" data-order-status="completed" role="tab" aria-selected="false">Terminadas</button>
           </div>
 
           <div id="orders-board" class="orders-board"></div>

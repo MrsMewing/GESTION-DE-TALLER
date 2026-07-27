@@ -39,6 +39,7 @@ const initialState = {
 };
 
 let state = loadState();
+let selectedOrderStatus = "pending";
 
 const tabs = document.querySelectorAll(".tab");
 const panels = document.querySelectorAll(".panel");
@@ -49,6 +50,8 @@ const noteTitleInput = document.getElementById("note-title");
 const noteDescriptionInput = document.getElementById("note-description");
 const notesList = document.getElementById("notes-list");
 const ordersBoard = document.getElementById("orders-board");
+const newOrderBtn = document.getElementById("new-order-btn");
+const subTabs = document.querySelectorAll(".subtab");
 
 function loadState() {
   try {
@@ -83,36 +86,49 @@ function renderNotes() {
 }
 
 function renderOrders() {
-  const columns = [
-    { key: "pending", title: "Pendientes", accent: "warning" },
-    { key: "inProgress", title: "En proceso", accent: "accent" },
-    { key: "completed", title: "Terminadas", accent: "success" },
-  ];
+  const labels = {
+    pending: "Pendientes",
+    inProgress: "En proceso",
+    completed: "Terminadas",
+  };
 
-  ordersBoard.innerHTML = columns
-    .map((column) => {
-      const items = state.orders[column.key] || [];
-      return `
-        <section class="status-column">
-          <h3>${column.title}</h3>
-          ${items
-            .map(
-              (order) => `
-                <article class="order-card">
-                  <h4>${order.title}</h4>
-                  <p>${order.description}</p>
-                  <div class="order-actions">
-                    ${column.key !== "pending" ? `<button class="move-btn" data-action="back" data-order-id="${order.id}" data-from="${column.key}">← Volver</button>` : ""}
-                    ${column.key !== "completed" ? `<button class="move-btn" data-action="next" data-order-id="${order.id}" data-from="${column.key}">Siguiente →</button>` : ""}
-                  </div>
-                </article>
-              `
-            )
-            .join("")}
-        </section>
-      `;
-    })
-    .join("");
+  const items = state.orders[selectedOrderStatus] || [];
+  subTabs.forEach((tab) => {
+    const isActive = tab.dataset.orderStatus === selectedOrderStatus;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+
+  if (!items.length) {
+    ordersBoard.innerHTML = `
+      <div class="orders-status-header">
+        <h3>${labels[selectedOrderStatus]}</h3>
+        <p>No hay órdenes en esta sección.</p>
+      </div>
+    `;
+    return;
+  }
+
+  ordersBoard.innerHTML = `
+    <div class="orders-status-header">
+      <h3>${labels[selectedOrderStatus]}</h3>
+      <p>${items.length} orden${items.length > 1 ? "es" : ""}</p>
+    </div>
+    ${items
+      .map(
+        (order) => `
+          <article class="order-card">
+            <h4>${order.title}</h4>
+            <p>${order.description}</p>
+            <div class="order-actions">
+              ${selectedOrderStatus !== "pending" ? `<button class="move-btn" data-action="back" data-order-id="${order.id}" data-from="${selectedOrderStatus}">← Volver</button>` : ""}
+              ${selectedOrderStatus !== "completed" ? `<button class="move-btn" data-action="next" data-order-id="${order.id}" data-from="${selectedOrderStatus}">Siguiente →</button>` : ""}
+            </div>
+          </article>
+        `
+      )
+      .join("")}
+  `;
 }
 
 function render() {
@@ -166,6 +182,17 @@ noteForm.addEventListener("submit", (event) => {
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => switchView(tab.dataset.view));
+});
+
+subTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    selectedOrderStatus = tab.dataset.orderStatus;
+    renderOrders();
+  });
+});
+
+newOrderBtn.addEventListener("click", (event) => {
+  event.preventDefault();
 });
 
 ordersBoard.addEventListener("click", (event) => {
