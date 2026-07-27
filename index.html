@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de órdenes y notas</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Gestión diaria</p>
+          <h1>Panel de órdenes y notas</h1>
+        </div>
+        <div class="tab-switcher" role="tablist" aria-label="Secciones de la app">
+          <button class="tab active" data-view="notes" role="tab" aria-selected="true">Notas</button>
+          <button class="tab" data-view="orders" role="tab" aria-selected="false">Órdenes</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section id="notes-panel" class="panel active" role="tabpanel">
+          <div class="panel-heading">
+            <div>
+              <h2>Sección de notas</h2>
+              <p>Guarda recordatorios y observaciones para tus equipos.</p>
+            </div>
+            <button id="add-note-btn" class="primary-btn">+ Agregar nota</button>
+          </div>
+
+          <form id="note-form" class="note-form hidden">
+            <input id="note-title" type="text" placeholder="Título de la nota" required />
+            <textarea id="note-description" rows="3" placeholder="Descripción" required></textarea>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Guardar</button>
+              <button type="button" id="cancel-note-btn" class="secondary-btn">Cancelar</button>
+            </div>
+          </form>
+
+          <div id="notes-list" class="notes-list"></div>
+        </section>
+
+        <section id="orders-panel" class="panel" role="tabpanel">
+          <div class="panel-heading">
+            <div>
+              <h2>Sección de órdenes</h2>
+              <p>Revisa el estado de cada pedido y avanza su proceso.</p>
+            </div>
+          </div>
+
+          <div id="orders-board" class="orders-board"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
