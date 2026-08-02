@@ -1,126 +1,961 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Panel de órdenes y notas</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Taller</title>
+    
+    <style>
+      /* --- ESTILOS BASE Y MENÚ PRINCIPAL --- */
+      body {
+        margin: 0;
+        padding: 20px;
+        background-color: #121824;
+        color: #ffffff;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      h1 { margin: 10px 0 25px 0; text-align: center; font-size: 24px; }
+
+      .menu-navegacion {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        max-width: 500px;
+        margin-bottom: 25px;
+      }
+
+      .btn-nav {
+        flex: 1;
+        background-color: #2c374e;
+        color: #8a99ad;
+        border: none;
+        padding: 15px;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .btn-nav.activo { background-color: #3c50e0; color: white; }
+
+      .contenedor-principal { width: 100%; max-width: 500px; }
+
+      .seccion { display: none; }
+      .seccion.activa { display: block; }
+
+      /* --- SUBMENÚ DE ESTADOS --- */
+      .submenu-estados {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+
+      .btn-crear-orden {
+        width: 100%;
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 18px;
+      }
+
+      .btn-sub {
+        flex: 1;
+        background-color: #1c2434;
+        color: #8a99ad;
+        border: 1px solid #2e3a50;
+        padding: 10px;
+        font-size: 12px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .btn-sub.activo[data-estado="pendiente"] { background-color: #ff9800; color: #000; border-color: #ff9800; }
+      .btn-sub.activo[data-estado="proceso"] { background-color: #3c50e0; color: #fff; border-color: #3c50e0; }
+      .btn-sub.activo[data-estado="terminada"] { background-color: #10b981; color: #fff; border-color: #10b981; }
+
+      /* --- TARJETAS DE ÓRDENES --- */
+      .lista-ordenes {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .tarjeta-orden {
+        background-color: #1c2434;
+        border-left: 5px solid #2e3a50;
+        padding: 15px;
+        border-radius: 6px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .tarjeta-orden:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.18);
+      }
+
+      .tarjeta-orden.pendiente { border-left-color: #ff9800; }
+      .tarjeta-orden.proceso { border-left-color: #3c50e0; }
+      .tarjeta-orden.terminada { border-left-color: #10b981; }
+
+      .tarjeta-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .orden-numero {
+        font-size: 11px;
+        background-color: #2e3a50;
+        color: #00ffcc;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-weight: bold;
+      }
+
+      .orden-fecha {
+        font-size: 12px;
+        color: #8a99ad;
+      }
+
+      .tarjeta-orden h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+      }
+
+      .tarjeta-orden p {
+        margin: 6px 0;
+        color: #d1d5db;
+        font-size: 14px;
+      }
+
+      .estado-texto {
+        text-align: right;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-top: 10px !important;
+      }
+
+      .txt-pendiente { color: #ff9800; }
+      .txt-proceso { color: #3c50e0; }
+      .txt-terminada { color: #10b981; }
+
+      .mensaje-vacio { text-align: center; color: #8a99ad; font-style: italic; padding: 20px; }
+
+      /* --- MODAL --- */
+      .modal-oculto {
+        display: none;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(8, 12, 20, 0.72);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        z-index: 20;
+      }
+
+      .modal-contenido {
+        width: min(600px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: #182131;
+        border: 1px solid #2e3a50;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .btn-cerrar {
+        background: transparent;
+        color: #ffffff;
+        border: 1px solid #2e3a50;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .tabs-secciones {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .tab-seccion {
+        background: #243245;
+        color: #d5deeb;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .tab-seccion.activo {
+        background: #3c50e0;
+        color: #ffffff;
+      }
+
+      .panel-seccion {
+        display: none;
+        background: #1c2434;
+        border-radius: 10px;
+        padding: 16px;
+      }
+
+      .panel-seccion.activo {
+        display: block;
+      }
+
+      .panel-seccion h3 {
+        margin-top: 0;
+        margin-bottom: 14px;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .campo-form {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .campo-form label {
+        color: #8a99ad;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .campo-form input,
+      .campo-form textarea {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 8px;
+        border: 1px solid #2e3a50;
+        background: #243245;
+        color: #ffffff;
+        padding: 10px;
+        font-family: sans-serif;
+      }
+
+      .campo-form textarea {
+        resize: vertical;
+        min-height: 95px;
+      }
+
+      .resumen-lista {
+        display: grid;
+        gap: 10px;
+      }
+
+      .resumen-item {
+        background: #243245;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .resumen-item span:first-child {
+        color: #8a99ad;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .resumen-item span:last-child {
+        color: #ffffff;
+        font-size: 14px;
+      }
+
+      .wizard-acciones {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .wizard-acciones button {
+        flex: 1;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .btn-aceptar {
+        background: #10b981;
+        color: #ffffff;
+      }
+
+      .btn-cancelar {
+        background: #2c374e;
+        color: #ffffff;
+      }
+
+      .detalle-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #2e3a50;
+        padding: 10px 0;
+      }
+
+      .detalle-item:last-child {
+        border-bottom: none;
+      }
+
+      .detalle-item span:first-child {
+        color: #8a99ad;
+        font-weight: bold;
+      }
+
+      .detalle-item span:last-child {
+        text-align: right;
+        color: #ffffff;
+      }
+
+      .galeria-imagenes {
+        max-height: 220px;
+        overflow-y: auto;
+        display: grid;
+        gap: 10px;
+        padding-right: 4px;
+      }
+
+      .galeria-imagenes img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #2e3a50;
+        background: #243245;
+      }
+
+      .cambio-estado-wrapper {
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .btn-cambiar-estado {
+        background: #3c50e0;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .opciones-cambio-estado {
+        display: none;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .opciones-cambio-estado.activo {
+        display: flex;
+      }
+
+      .opcion-estado {
+        border: none;
+        border-radius: 6px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .opcion-estado[data-estado="pendiente"] { background: #ff9800; color: #000; }
+      .opcion-estado[data-estado="proceso"] { background: #3c50e0; color: #fff; }
+      .opcion-estado[data-estado="terminada"] { background: #10b981; color: #fff; }
+    </style>
   </head>
   <body>
-    <div class="app-shell">
-      <header class="app-header">
-        <div>
-          <p class="eyebrow">Gestión diaria</p>
-          <h1>Panel de órdenes y notas</h1>
-        </div>
-        <div class="tab-switcher" role="tablist" aria-label="Secciones de la app">
-          <button class="tab" data-view="orders" role="tab" aria-selected="false">Órdenes</button>
-          <button class="tab active" data-view="notes" role="tab" aria-selected="true">Notas</button>
-        </div>
-      </header>
 
-      <main class="content">
-        <section id="notes-panel" class="panel active" role="tabpanel">
-          <div class="panel-heading">
-            <div>
-              <h2>Sección de notas</h2>
-              <p>Guarda recordatorios y observaciones para tus equipos.</p>
-            </div>
-            <button id="add-note-btn" class="primary-btn">+ Agregar nota</button>
-          </div>
+    <h1>GESTION DE TALLER</h1>
 
-          <form id="note-form" class="note-form hidden">
-            <input id="note-title" type="text" placeholder="Título de la nota" required />
-            <textarea id="note-description" rows="3" placeholder="Descripción" required></textarea>
-            <div class="form-actions">
-              <button type="submit" class="primary-btn">Guardar</button>
-              <button type="button" id="cancel-note-btn" class="secondary-btn">Cancelar</button>
-            </div>
-          </form>
+    <!-- Menú Principal -->
+    <nav class="menu-navegacion">
+      <button class="btn-nav activo" onclick="cambiarPestaña('ordenes', this)">ORDENES</button>
+      <button class="btn-nav" onclick="cambiarPestaña('notas', this)">NOTAS</button>
+    </nav>
 
-          <div id="notes-list" class="notes-list"></div>
-        </section>
+    <!-- Área Contenedora -->
+    <main class="contenedor-principal">
 
-        <section id="orders-panel" class="panel" role="tabpanel">
-          <div class="panel-heading">
-            <div>
-              <h2>Sección de órdenes</h2>
-              <p>Revisa el estado de cada pedido y avanza su proceso.</p>
-            </div>
-            <button id="new-order-btn" class="primary-btn">+ Nueva orden</button>
-          </div>
-
-          <div class="orders-subtabs" role="tablist" aria-label="Subsecciones de órdenes">
-            <button class="subtab active" data-order-status="pending" role="tab" aria-selected="true">Pendientes</button>
-            <button class="subtab" data-order-status="inProgress" role="tab" aria-selected="false">En proceso</button>
-            <button class="subtab" data-order-status="completed" role="tab" aria-selected="false">Terminadas</button>
-          </div>
-
-          <div id="orders-board" class="orders-board"></div>
-        </section>
-      </main>
-    </div>
-
-    <div id="order-modal" class="modal hidden" aria-hidden="true">
-      <div class="modal-content">
-        <button id="close-modal-btn" class="close-modal-btn" aria-label="Cerrar">×</button>
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">Detalle de orden</p>
-            <h3 id="modal-title">Orden</h3>
-          </div>
+      <!-- ================= SECCIÓN ÓRDENES ================= -->
+      <section id="seccion-ordenes" class="seccion activa">
+        
+        <!-- Submenú de Estados -->
+        <div class="submenu-estados">
+          <button class="btn-sub activo" data-estado="pendiente" onclick="filtrarEstados('pendiente', this)">PENDIENTES</button>
+          <button class="btn-sub" data-estado="proceso" onclick="filtrarEstados('proceso', this)">EN PROCESO</button>
+          <button class="btn-sub" data-estado="terminada" onclick="filtrarEstados('terminada', this)">TERMINADAS</button>
         </div>
 
-        <div class="modal-nav-bar">
-          <button id="prev-section-btn" class="nav-arrow-btn" aria-label="Sección anterior">← Anterior</button>
-          <div class="modal-tabs">
-            <button class="modal-tab active-section" data-section="0">Informe del equipo</button>
-            <button class="modal-tab" data-section="1">Informe del dueño</button>
-            <button class="modal-tab" data-section="2">Detalles de la falla</button>
+        <button class="btn-crear-orden" onclick="abrirModalNuevaOrden()">+ NUEVA ORDEN</button>
+
+        <!-- Contenedor dinámico de tarjetas -->
+        <div id="contenedor-tarjetas" class="lista-ordenes"></div>
+
+      </section>
+
+      <!-- ================= SECCIÓN NOTAS ================= -->
+      <section id="seccion-notas" class="seccion">
+        <div style="background:#1c2434; padding:20px; border-radius:8px;">
+          <h2>📝 Notas Rápidas</h2>
+          <p>Sección secundaria fuera del flujo de órdenes.</p>
+        </div>
+      </section>
+
+    </main>
+
+    <div id="modal-orden" class="modal-oculto">
+      <div class="modal-overlay" onclick="cerrarModalOrden(event)">
+        <div class="modal-contenido" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h2 id="titulo-modal">Orden</h2>
+            <button class="btn-cerrar" onclick="cerrarModalOrden()">Cerrar</button>
           </div>
-          <button id="next-section-btn" class="nav-arrow-btn" aria-label="Siguiente sección">Siguiente →</button>
-        </div>
 
-        <div class="modal-content-area">
-          <section class="modal-section active" data-section="0">
-            <h4>Informe del equipo</h4>
-            <div class="modal-grid">
-              <div><strong>Fecha de ingreso:</strong> <span id="modal-date"></span></div>
-              <div><strong>Nombre del equipo:</strong> <span id="modal-equipment"></span></div>
-              <div><strong>Accesorios:</strong> <span id="modal-accessories"></span></div>
-              <div><strong>Precio de reparación:</strong> <span id="modal-price"></span></div>
-            </div>
-            <div class="modal-image-box">
-              <p>Foto del equipo ingresado</p>
-              <div class="mock-image">📷</div>
-            </div>
-          </section>
+          <div class="tabs-secciones">
+            <button class="tab-seccion activo" data-seccion="cliente" onclick="mostrarSeccionModal(0)">Cliente</button>
+            <button class="tab-seccion" data-seccion="equipo" onclick="mostrarSeccionModal(1)">Equipo</button>
+            <button class="tab-seccion" data-seccion="falla" onclick="mostrarSeccionModal(2)">Falla</button>
+          </div>
 
-          <section class="modal-section" data-section="1">
-            <h4>Informe del dueño</h4>
-            <div class="modal-grid">
-              <div><strong>Nombre del cliente:</strong> <span id="modal-owner"></span></div>
-              <div><strong>Teléfono:</strong> <span id="modal-phone"></span></div>
-              <div><strong>Dirección:</strong> <span id="modal-address"></span></div>
-            </div>
-          </section>
-
-          <section class="modal-section" data-section="2">
-            <h4>Detalles de la falla</h4>
-            <div class="modal-grid">
-              <div><strong>Problema principal:</strong> <span id="modal-problem"></span></div>
-              <div><strong>Descripción de la falla:</strong> <span id="modal-description"></span></div>
-              <div><strong>Fallas extras:</strong> <span id="modal-extra"></span></div>
-            </div>
-          </section>
-        </div>
-
-        <div class="modal-footer">
-          <button id="change-status-btn" class="primary-btn">Cambiar estado</button>
+          <div id="panel-cliente" class="panel-seccion activo"></div>
+          <div id="panel-equipo" class="panel-seccion"></div>
+          <div id="panel-falla" class="panel-seccion"></div>
         </div>
       </div>
     </div>
 
-    <script src="script.js"></script>
+    <div id="modal-nueva-orden" class="modal-oculto">
+      <div class="modal-overlay" onclick="cerrarModalNuevaOrden(event)">
+        <div class="modal-contenido" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Nueva Orden</h2>
+            <button class="btn-cerrar" onclick="cerrarModalNuevaOrden()">Cerrar</button>
+          </div>
+
+          <div class="tabs-secciones">
+            <button class="tab-seccion activo" data-seccion="cliente" onclick="mostrarSeccionNueva(0)">Cliente</button>
+            <button class="tab-seccion" data-seccion="equipo" onclick="mostrarSeccionNueva(1)">Equipo</button>
+            <button class="tab-seccion" data-seccion="falla" onclick="mostrarSeccionNueva(2)">Falla</button>
+            <button class="tab-seccion" data-seccion="resumen" onclick="mostrarSeccionNueva(3)">Resumen</button>
+          </div>
+
+          <div id="panel-nueva-cliente" class="panel-seccion activo"></div>
+          <div id="panel-nueva-equipo" class="panel-seccion"></div>
+          <div id="panel-nueva-falla" class="panel-seccion"></div>
+          <div id="panel-nueva-resumen" class="panel-seccion"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LÓGICA Y DATOS MODIFICADOS -->
+    <script>
+      const baseDeDatosOrdenes = [
+        {
+          numeroOrden: "ORD-001",
+          equipo: "iPhone 11",
+          falla: "No enciende (Corto en VCC_MAIN)",
+          fechaIngreso: "2026-07-25",
+          estado: "pendiente",
+          cliente: {
+            nombre: "María López",
+            telefono: "+52 55 2222 3344",
+            correo: "maria.lopez@email.com",
+            direccion: "Calle 5, Col. Centro, CDMX"
+          },
+          equipoInfo: {
+            marca: "Apple",
+            modelo: "iPhone 11",
+            imei: "35 3660 1234 5678",
+            accesorios: "Cargador original, funda y audífonos",
+            imagenes: [
+              "https://placehold.co/600x340/3c50e0/ffffff?text=Frente+iPhone",
+              "https://placehold.co/600x340/243245/ffffff?text=Trasero+iPhone",
+              "https://placehold.co/600x340/10b981/ffffff?text=Pantalla+iPhone"
+            ]
+          },
+          fallaInfo: {
+            descripcion: "El equipo no responde al encender y se observa un corto en la línea VCC_MAIN.",
+            prioridad: "Alta",
+            observacion: "Necesita revisión de alimentación y limpieza de la placa."
+          }
+        },
+        {
+          numeroOrden: "ORD-002",
+          equipo: "Samsung S21",
+          falla: "Reballing de Codec de Audio",
+          fechaIngreso: "2026-07-26",
+          estado: "proceso",
+          cliente: {
+            nombre: "Carlos Ramírez",
+            telefono: "+52 55 7777 1234",
+            correo: "carlos.ramirez@email.com",
+            direccion: "Av. Reforma 120, CDMX"
+          },
+          equipoInfo: {
+            marca: "Samsung",
+            modelo: "S21",
+            imei: "35 4567 9876 5432",
+            accesorios: "Cargador sin original",
+            imagenes: [
+              "https://placehold.co/600x340/3c50e0/ffffff?text=Samsung+Frente",
+              "https://placehold.co/600x340/243245/ffffff?text=Samsung+Trasero"
+            ]
+          },
+          fallaInfo: {
+            descripcion: "El audio no funciona en llamadas y la salida no se reconoce correctamente.",
+            prioridad: "Media",
+            observacion: "Se requiere reballing en el codec de audio y prueba de continuidad."
+          }
+        },
+        {
+          numeroOrden: "ORD-003",
+          equipo: "Xiaomi Note 10",
+          falla: "Cambio de Pin de Carga FPC",
+          fechaIngreso: "2026-07-27",
+          estado: "terminada",
+          cliente: {
+            nombre: "Laura Torres",
+            telefono: "+52 55 5555 7676",
+            correo: "laura.torres@email.com",
+            direccion: "Paseo de la Reforma 45, CDMX"
+          },
+          equipoInfo: {
+            marca: "Xiaomi",
+            modelo: "Note 10",
+            imei: "35 1234 6789 4567",
+            accesorios: "Cargador, funda y vidrio templado",
+            imagenes: [
+              "https://placehold.co/600x340/10b981/ffffff?text=Xiaomi+Frente",
+              "https://placehold.co/600x340/243245/ffffff?text=Xiaomi+Detalle"
+            ]
+          },
+          fallaInfo: {
+            descripcion: "El equipo carga de forma intermitente y el pin del conector presenta desgaste físico.",
+            prioridad: "Media",
+            observacion: "Se realizó cambio de FPC y prueba completa de carga."
+          }
+        },
+        {
+          numeroOrden: "ORD-004",
+          equipo: "Huawei P30 Lite",
+          falla: "Pantalla rota y tapa trasera dañada",
+          fechaIngreso: "2026-07-28",
+          estado: "pendiente",
+          cliente: {
+            nombre: "José Benítez",
+            telefono: "+52 55 3333 8866",
+            correo: "jose.benitez@email.com",
+            direccion: "Calle 7, Col. Del Valle, CDMX"
+          },
+          equipoInfo: {
+            marca: "Huawei",
+            modelo: "P30 Lite",
+            imei: "35 7654 3210 1122",
+            accesorios: "Tapa trasera, película protectora",
+            imagenes: [
+              "https://placehold.co/600x340/ff9800/000000?text=Huawei+Frente",
+              "https://placehold.co/600x340/243245/ffffff?text=Huawei+Tapa"
+            ]
+          },
+          fallaInfo: {
+            descripcion: "La pantalla presenta rotura total y la tapa trasera tiene golpes visibles.",
+            prioridad: "Baja",
+            observacion: "Se necesita revisión de caja y posible cambio de panel."
+          }
+        },
+        {
+          numeroOrden: "ORD-005",
+          equipo: "iPad Air 3",
+          falla: "Fuga en línea de retroiluminación",
+          fechaIngreso: "2026-07-29",
+          estado: "proceso",
+          cliente: {
+            nombre: "Sofía Méndez",
+            telefono: "+52 55 4444 9090",
+            correo: "sofia.mendez@email.com",
+            direccion: "Calle de la Aurora 18, Estado de México"
+          },
+          equipoInfo: {
+            marca: "Apple",
+            modelo: "iPad Air 3",
+            imei: "35 9012 3456 7890",
+            accesorios: "Apple Pencil y funda",
+            imagenes: [
+              "https://placehold.co/600x340/3c50e0/ffffff?text=iPad+Frente",
+              "https://placehold.co/600x340/243245/ffffff?text=iPad+Detalle"
+            ]
+          },
+          fallaInfo: {
+            descripcion: "La pantalla presenta fuga de iluminación en la parte inferior y brillo irregular.",
+            prioridad: "Alta",
+            observacion: "Revisión de retroiluminación y posible cambio de módulo."
+          }
+        }
+      ];
+
+      let ordenSeleccionada = null;
+      let indiceSeccionActual = 0;
+      let indiceSeccionNueva = 0;
+      let estadoFiltradoActual = 'pendiente';
+      const seccionesModal = ["cliente", "equipo", "falla"];
+      const seccionesNuevaModal = ["cliente", "equipo", "falla", "resumen"];
+
+      function renderizarOrdenes(estadoFiltrado) {
+        const contenedor = document.getElementById('contenedor-tarjetas');
+        contenedor.innerHTML = "";
+
+        const ordenesFiltradas = baseDeDatosOrdenes.filter(orden => orden.estado === estadoFiltrado);
+
+        if (ordenesFiltradas.length === 0) {
+          contenedor.innerHTML = `<p class="mensaje-vacio">No hay órdenes en este estado 👍</p>`;
+          return;
+        }
+
+        ordenesFiltradas.forEach(orden => {
+          const tarjeta = document.createElement('div');
+          tarjeta.className = `tarjeta-orden ${orden.estado}`;
+          tarjeta.addEventListener('click', () => abrirModalOrden(orden));
+
+          let textoEstadoVisual = "";
+          if (orden.estado === 'pendiente') textoEstadoVisual = "Pendiente de revisión";
+          if (orden.estado === 'proceso') textoEstadoVisual = "En proceso de reparación";
+          if (orden.estado === 'terminada') textoEstadoVisual = "Terminada / Lista para entrega";
+
+          tarjeta.innerHTML = `
+            <div class="tarjeta-header">
+              <span class="orden-numero">${orden.numeroOrden}</span>
+              <span class="orden-fecha">📅 ${orden.fechaIngreso}</span>
+            </div>
+            <h3>${orden.equipo}</h3>
+            <p><strong>Falla Principal:</strong> ${orden.falla}</p>
+            <p class="estado-texto txt-${orden.estado}">● ${textoEstadoVisual}</p>
+          `;
+
+          contenedor.appendChild(tarjeta);
+        });
+      }
+
+      function filtrarEstados(estado, botonPresionado) {
+        const botonesSub = document.querySelectorAll('.btn-sub');
+        botonesSub.forEach(btn => btn.classList.remove('activo'));
+        botonPresionado.classList.add('activo');
+        estadoFiltradoActual = estado;
+        renderizarOrdenes(estado);
+      }
+
+      function cambiarPestaña(seccionId, botonSeleccionado) {
+        const secciones = document.querySelectorAll('.seccion');
+        secciones.forEach(sec => sec.classList.remove('activa'));
+
+        const botones = document.querySelectorAll('.btn-nav');
+        botones.forEach(btn => btn.classList.remove('activo'));
+
+        document.getElementById('seccion-' + seccionId).classList.add('activa');
+        botonSeleccionado.classList.add('activo');
+      }
+
+      function abrirModalOrden(orden) {
+        ordenSeleccionada = orden;
+        indiceSeccionActual = 0;
+        document.getElementById('titulo-modal').textContent = `${orden.numeroOrden} - ${orden.equipo}`;
+        document.getElementById('modal-orden').classList.remove('modal-oculto');
+        actualizarModal();
+      }
+
+      function cerrarModalOrden(event) {
+        if (event && event.target.classList.contains('modal-overlay')) {
+          document.getElementById('modal-orden').classList.add('modal-oculto');
+          return;
+        }
+
+        if (!event) {
+          document.getElementById('modal-orden').classList.add('modal-oculto');
+        }
+      }
+
+      function mostrarSeccionModal(index) {
+        indiceSeccionActual = index;
+        actualizarModal();
+      }
+
+      function abrirModalNuevaOrden() {
+        indiceSeccionNueva = 0;
+        document.getElementById('modal-nueva-orden').classList.remove('modal-oculto');
+        actualizarModalNuevo();
+      }
+
+      function cerrarModalNuevaOrden(event) {
+        if (event && event.target.classList.contains('modal-overlay')) {
+          document.getElementById('modal-nueva-orden').classList.add('modal-oculto');
+          return;
+        }
+
+        if (!event) {
+          document.getElementById('modal-nueva-orden').classList.add('modal-oculto');
+        }
+      }
+
+      function mostrarSeccionNueva(index) {
+        indiceSeccionNueva = index;
+        actualizarModalNuevo();
+      }
+
+      function cambiarSeccionModal(direccion) {
+        indiceSeccionActual += direccion;
+
+        if (indiceSeccionActual < 0) indiceSeccionActual = 0;
+        if (indiceSeccionActual > seccionesModal.length - 1) indiceSeccionActual = seccionesModal.length - 1;
+
+        actualizarModal();
+      }
+
+      function getOpcionesCambioEstado(estadoActual) {
+        const estadosDisponibles = [
+          { key: 'pendiente', label: 'Pendiente' },
+          { key: 'proceso', label: 'En proceso' },
+          { key: 'terminada', label: 'Terminada' }
+        ];
+
+        return estadosDisponibles
+          .filter(estado => estado.key !== estadoActual)
+          .map(estado => `<button class="opcion-estado" data-estado="${estado.key}" onclick="cambiarEstadoOrden('${estado.key}')">${estado.label}</button>`)
+          .join('');
+      }
+
+      function toggleCambioEstado() {
+        const opciones = document.getElementById('opciones-cambio-estado');
+        opciones.classList.toggle('activo');
+      }
+
+      function cambiarEstadoOrden(nuevoEstado) {
+        if (!ordenSeleccionada || nuevoEstado === ordenSeleccionada.estado) return;
+
+        const ordenEnBase = baseDeDatosOrdenes.find(orden => orden.numeroOrden === ordenSeleccionada.numeroOrden);
+        if (!ordenEnBase) return;
+
+        ordenEnBase.estado = nuevoEstado;
+        ordenSeleccionada.estado = nuevoEstado;
+
+        const estadoDesdeFiltro = estadoFiltradoActual;
+        renderizarOrdenes(estadoDesdeFiltro);
+        actualizarModal();
+      }
+
+      function obtenerDatosFormularioNuevaOrden() {
+        return {
+          nombre: document.getElementById('cliente-nombre')?.value?.trim() || '',
+          telefono: document.getElementById('cliente-telefono')?.value?.trim() || '',
+          correo: document.getElementById('cliente-correo')?.value?.trim() || '',
+          direccion: document.getElementById('cliente-direccion')?.value?.trim() || '',
+          marca: document.getElementById('equipo-marca')?.value?.trim() || '',
+          modelo: document.getElementById('equipo-modelo')?.value?.trim() || '',
+          imei: document.getElementById('equipo-imei')?.value?.trim() || '',
+          accesorios: document.getElementById('equipo-accesorios')?.value?.trim() || '',
+          fallaPrincipal: document.getElementById('falla-principal')?.value?.trim() || '',
+          descripcion: document.getElementById('falla-descripcion')?.value?.trim() || '',
+          fallasExtras: document.getElementById('falla-extras')?.value?.trim() || ''
+        };
+      }
+
+      function actualizarModalNuevo() {
+        const datos = obtenerDatosFormularioNuevaOrden();
+
+        document.getElementById('panel-nueva-cliente').innerHTML = `
+          <h3>Información de cliente</h3>
+          <div class="form-grid">
+            <div class="campo-form"><label>Nombre</label><input id="cliente-nombre" type="text" value="${datos.nombre}"></div>
+            <div class="campo-form"><label>Teléfono</label><input id="cliente-telefono" type="text" value="${datos.telefono}"></div>
+            <div class="campo-form"><label>Correo</label><input id="cliente-correo" type="email" value="${datos.correo}"></div>
+            <div class="campo-form"><label>Dirección</label><input id="cliente-direccion" type="text" value="${datos.direccion}"></div>
+          </div>
+        `;
+
+        document.getElementById('panel-nueva-equipo').innerHTML = `
+          <h3>Información del equipo</h3>
+          <div class="form-grid">
+            <div class="campo-form"><label>Marca</label><input id="equipo-marca" type="text" value="${datos.marca}"></div>
+            <div class="campo-form"><label>Modelo</label><input id="equipo-modelo" type="text" value="${datos.modelo}"></div>
+            <div class="campo-form"><label>IMEI</label><input id="equipo-imei" type="text" value="${datos.imei}"></div>
+            <div class="campo-form"><label>Accesorios</label><input id="equipo-accesorios" type="text" value="${datos.accesorios}"></div>
+          </div>
+        `;
+
+        document.getElementById('panel-nueva-falla').innerHTML = `
+          <h3>Información de la falla</h3>
+          <div class="form-grid">
+            <div class="campo-form"><label>Falla principal</label><input id="falla-principal" type="text" value="${datos.fallaPrincipal}"></div>
+            <div class="campo-form"><label>Descripción</label><textarea id="falla-descripcion">${datos.descripcion}</textarea></div>
+            <div class="campo-form"><label>Fallas extras</label><textarea id="falla-extras">${datos.fallasExtras}</textarea></div>
+          </div>
+        `;
+
+        document.getElementById('panel-nueva-resumen').innerHTML = `
+          <h3>Resumen de la orden</h3>
+          <div class="resumen-lista">
+            <div class="resumen-item"><span>Nombre</span><span>${datos.nombre || '-'}</span></div>
+            <div class="resumen-item"><span>Teléfono</span><span>${datos.telefono || '-'}</span></div>
+            <div class="resumen-item"><span>Correo</span><span>${datos.correo || '-'}</span></div>
+            <div class="resumen-item"><span>Dirección</span><span>${datos.direccion || '-'}</span></div>
+            <div class="resumen-item"><span>Marca</span><span>${datos.marca || '-'}</span></div>
+            <div class="resumen-item"><span>Modelo</span><span>${datos.modelo || '-'}</span></div>
+            <div class="resumen-item"><span>IMEI</span><span>${datos.imei || '-'}</span></div>
+            <div class="resumen-item"><span>Accesorios</span><span>${datos.accesorios || '-'}</span></div>
+            <div class="resumen-item"><span>Falla principal</span><span>${datos.fallaPrincipal || '-'}</span></div>
+            <div class="resumen-item"><span>Descripción</span><span>${datos.descripcion || '-'}</span></div>
+            <div class="resumen-item"><span>Fallas extras</span><span>${datos.fallasExtras || '-'}</span></div>
+          </div>
+          <div class="wizard-acciones">
+            <button class="btn-aceptar" onclick="guardarNuevaOrden()">Aceptar</button>
+            <button class="btn-cancelar" onclick="cerrarModalNuevaOrden()">Cancelar</button>
+          </div>
+        `;
+
+        const tabs = document.querySelectorAll('#modal-nueva-orden .tab-seccion');
+        tabs.forEach((tab, index) => {
+          tab.classList.toggle('activo', index === indiceSeccionNueva);
+        });
+
+        const panels = document.querySelectorAll('#modal-nueva-orden .panel-seccion');
+        panels.forEach((panel, index) => {
+          panel.classList.toggle('activo', index === indiceSeccionNueva);
+        });
+      }
+
+      function guardarNuevaOrden() {
+        const datos = obtenerDatosFormularioNuevaOrden();
+        if (!datos.nombre || !datos.fallaPrincipal || !datos.marca || !datos.modelo) {
+          alert('Completa al menos nombre, marca, modelo y falla principal para guardar la orden.');
+          return;
+        }
+
+        const nuevaOrden = {
+          numeroOrden: `ORD-${String(baseDeDatosOrdenes.length + 1).padStart(3, '0')}`,
+          equipo: datos.modelo,
+          falla: datos.fallaPrincipal,
+          fechaIngreso: new Date().toISOString().slice(0, 10),
+          estado: 'pendiente',
+          cliente: {
+            nombre: datos.nombre,
+            telefono: datos.telefono,
+            correo: datos.correo,
+            direccion: datos.direccion
+          },
+          equipoInfo: {
+            marca: datos.marca,
+            modelo: datos.modelo,
+            imei: datos.imei,
+            accesorios: datos.accesorios,
+            imagenes: []
+          },
+          fallaInfo: {
+            descripcion: datos.descripcion,
+            prioridad: 'Sin definir',
+            observacion: datos.fallasExtras
+          }
+        };
+
+        baseDeDatosOrdenes.unshift(nuevaOrden);
+        renderizarOrdenes(estadoFiltradoActual);
+        cerrarModalNuevaOrden();
+      }
+
+      function actualizarModal() {
+        if (!ordenSeleccionada) return;
+
+        const panelCliente = document.getElementById('panel-cliente');
+        const panelEquipo = document.getElementById('panel-equipo');
+        const panelFalla = document.getElementById('panel-falla');
+
+        panelCliente.innerHTML = `
+          <h3>Información de cliente</h3>
+          <div class="detalle-item"><span>Nombre</span><span>${ordenSeleccionada.cliente.nombre}</span></div>
+          <div class="detalle-item"><span>Teléfono</span><span>${ordenSeleccionada.cliente.telefono}</span></div>
+          <div class="detalle-item"><span>Correo</span><span>${ordenSeleccionada.cliente.correo}</span></div>
+          <div class="detalle-item"><span>Dirección</span><span>${ordenSeleccionada.cliente.direccion}</span></div>
+        `;
+
+        panelEquipo.innerHTML = `
+          <h3>Información del equipo</h3>
+          <div class="detalle-item"><span>Marca</span><span>${ordenSeleccionada.equipoInfo.marca}</span></div>
+          <div class="detalle-item"><span>Modelo</span><span>${ordenSeleccionada.equipoInfo.modelo}</span></div>
+          <div class="detalle-item"><span>IMEI</span><span>${ordenSeleccionada.equipoInfo.imei}</span></div>
+          <div class="detalle-item"><span>Accesorios</span><span>${ordenSeleccionada.equipoInfo.accesorios}</span></div>
+
+          <h3 style="margin-top: 16px;">Imágenes del equipo</h3>
+          <div class="galeria-imagenes">
+            ${ordenSeleccionada.equipoInfo.imagenes.map(src => `<img src="${src}" alt="Imagen del equipo">`).join('')}
+          </div>
+        `;
+
+        panelFalla.innerHTML = `
+          <h3>Información de la falla</h3>
+          <div class="detalle-item"><span>Falla principal</span><span>${ordenSeleccionada.falla}</span></div>
+          <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion}</span></div>
+          <div class="detalle-item"><span>Fallas extras</span><span>${ordenSeleccionada.fallaInfo.observacion}</span></div>
+
+          <div class="cambio-estado-wrapper">
+            <button class="btn-cambiar-estado" onclick="toggleCambioEstado()">Cambiar estado</button>
+            <div id="opciones-cambio-estado" class="opciones-cambio-estado">
+              ${getOpcionesCambioEstado(ordenSeleccionada.estado)}
+            </div>
+          </div>
+        `;
+
+        document.querySelectorAll('.tab-seccion').forEach((tab, index) => {
+          tab.classList.toggle('activo', index === indiceSeccionActual);
+        });
+
+        document.querySelectorAll('.panel-seccion').forEach((panel, index) => {
+          panel.classList.toggle('activo', index === indiceSeccionActual);
+        });
+
+      }
+
+      renderizarOrdenes('pendiente');
+    </script>
+
   </body>
 </html>
