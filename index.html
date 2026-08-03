@@ -327,6 +327,16 @@
         color: #ffffff;
       }
 
+      .btn-eliminar-orden {
+        background: #dc2626;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
       .detalle-item {
         display: flex;
         justify-content: space-between;
@@ -406,6 +416,75 @@
         cursor: pointer;
       }
 
+      .btn-eliminar-orden-tarjeta {
+        background: #dc2626;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      .btn-agregar-nota {
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .btn-eliminar-nota {
+        background: #dc2626;
+        color: #ffffff;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .seccion-notas-form {
+        display: grid;
+        gap: 10px;
+        background: #1c2434;
+        padding: 16px;
+        border-radius: 10px;
+        margin-bottom: 16px;
+      }
+
+      .nota-card {
+        background: #1c2434;
+        border-radius: 10px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .nota-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .nota-titulo {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .nota-descripcion {
+        margin: 0;
+        color: #d1d5db;
+        font-size: 14px;
+        white-space: pre-wrap;
+      }
+
       .cambio-estado-wrapper {
         margin-top: 14px;
         display: flex;
@@ -478,10 +557,20 @@
 
       <!-- ================= SECCIÓN NOTAS ================= -->
       <section id="seccion-notas" class="seccion">
-        <div style="background:#1c2434; padding:20px; border-radius:8px;">
+        <div class="seccion-notas-form">
           <h2>📝 Notas Rápidas</h2>
-          <p>Sección secundaria fuera del flujo de órdenes.</p>
+          <div class="campo-form">
+            <label for="nota-titulo">Título</label>
+            <input id="nota-titulo" type="text" placeholder="Ej. Recordatorio de reparación">
+          </div>
+          <div class="campo-form">
+            <label for="nota-descripcion">Descripción</label>
+            <textarea id="nota-descripcion" placeholder="Escribe la nota..."></textarea>
+          </div>
+          <button class="btn-agregar-nota" onclick="guardarNota()">Agregar nota</button>
         </div>
+
+        <div id="contenedor-notas" class="lista-ordenes"></div>
       </section>
 
     </main>
@@ -534,11 +623,13 @@
     <script>
       const DB_NAME = 'tallerDB';
       const STORE_NAME = 'ordenes';
-      const DB_VERSION = 1;
+      const NOTAS_STORE_NAME = 'notas';
+      const DB_VERSION = 2;
       const CLEANUP_KEY = 'taller-db-cleanup-done';
 
       let db = null;
       let ordenesEnMemoria = [];
+      let notasEnMemoria = [];
       let ordenSeleccionada = null;
       let indiceSeccionActual = 0;
       let indiceSeccionNueva = 0;
@@ -556,6 +647,10 @@
             if (!database.objectStoreNames.contains(STORE_NAME)) {
               const store = database.createObjectStore(STORE_NAME, { keyPath: 'numeroOrden' });
               store.createIndex('estado', 'estado', { unique: false });
+            }
+
+            if (!database.objectStoreNames.contains(NOTAS_STORE_NAME)) {
+              database.createObjectStore(NOTAS_STORE_NAME, { keyPath: 'id', autoIncrement: true });
             }
           };
 
@@ -626,6 +721,44 @@
         });
       }
 
+      function cargarNotasDesdeDB() {
+        return new Promise((resolve, reject) => {
+          if (!db) {
+            reject(new Error('La base de datos aún no está abierta.'));
+            return;
+          }
+
+          const transaccion = db.transaction(NOTAS_STORE_NAME, 'readonly');
+          const store = transaccion.objectStore(NOTAS_STORE_NAME);
+          const request = store.getAll();
+
+          request.onsuccess = () => {
+            notasEnMemoria = request.result || [];
+            resolve(notasEnMemoria);
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function guardarNotasEnDB() {
+        return new Promise((resolve, reject) => {
+          if (!db) {
+            reject(new Error('La base de datos aún no está abierta.'));
+            return;
+          }
+
+          const transaccion = db.transaction(NOTAS_STORE_NAME, 'readwrite');
+          const store = transaccion.objectStore(NOTAS_STORE_NAME);
+
+          transaccion.oncomplete = () => resolve();
+          transaccion.onerror = () => reject(transaccion.error);
+
+          store.clear();
+          notasEnMemoria.forEach(nota => store.put(nota));
+        });
+      }
+
       async function iniciarAplicacion() {
         await abrirBaseDeDatos();
 
@@ -635,7 +768,9 @@
         }
 
         await cargarOrdenesDesdeDB();
+        await cargarNotasDesdeDB();
         renderizarOrdenes(estadoFiltradoActual);
+        renderizarNotas();
       }
 
       function renderizarOrdenes(estadoFiltrado) {
@@ -652,7 +787,10 @@
         ordenesFiltradas.forEach(orden => {
           const tarjeta = document.createElement('div');
           tarjeta.className = `tarjeta-orden ${orden.estado}`;
-          tarjeta.addEventListener('click', () => abrirModalOrden(orden));
+          tarjeta.addEventListener('click', (event) => {
+            if (event.target.closest('.btn-eliminar-orden-tarjeta')) return;
+            abrirModalOrden(orden);
+          });
 
           let textoEstadoVisual = "";
           if (orden.estado === 'pendiente') textoEstadoVisual = "Pendiente de revisión";
@@ -667,6 +805,7 @@
             <h3>${orden.equipo}</h3>
             <p><strong>Falla Principal:</strong> ${orden.falla}</p>
             <p class="estado-texto txt-${orden.estado}">● ${textoEstadoVisual}</p>
+            <button class="btn-eliminar-orden-tarjeta" onclick="event.stopPropagation(); eliminarOrdenDesdeTarjeta('${orden.numeroOrden}')">Eliminar</button>
           `;
 
           contenedor.appendChild(tarjeta);
@@ -698,6 +837,30 @@
         document.getElementById('titulo-modal').textContent = `${orden.numeroOrden} - ${orden.equipo}`;
         document.getElementById('modal-orden').classList.remove('modal-oculto');
         actualizarModal();
+      }
+
+      function generarNumeroOrden() {
+        const maximo = ordenesEnMemoria.reduce((valorMaximo, orden) => {
+          const numero = Number((orden.numeroOrden.match(/\d+/) || ['0'])[0]);
+          return Math.max(valorMaximo, numero);
+        }, 0);
+
+        return `ORD-${String(maximo + 1).padStart(3, '0')}`;
+      }
+
+      async function eliminarOrdenDesdeTarjeta(numeroOrden) {
+        const confirmar = confirm(`¿Seguro que quieres eliminar la orden ${numeroOrden}?`);
+        if (!confirmar) return;
+
+        ordenesEnMemoria = ordenesEnMemoria.filter(orden => orden.numeroOrden !== numeroOrden);
+        await guardarOrdenesEnDB();
+
+        if (ordenSeleccionada && ordenSeleccionada.numeroOrden === numeroOrden) {
+          ordenSeleccionada = null;
+          document.getElementById('modal-orden').classList.add('modal-oculto');
+        }
+
+        renderizarOrdenes(estadoFiltradoActual);
       }
 
       function cerrarModalOrden(event) {
@@ -920,13 +1083,8 @@
           return;
         }
 
-        const ultimoNumero = ordenesEnMemoria.reduce((maximo, orden) => {
-          const numero = Number((orden.numeroOrden.match(/\d+/) || ['0'])[0]);
-          return Math.max(maximo, numero);
-        }, 0);
-
         const nuevaOrden = {
-          numeroOrden: `ORD-${String(ultimoNumero + 1).padStart(3, '0')}`,
+          numeroOrden: generarNumeroOrden(),
           equipo: datos.modelo || 'Equipo sin modelo',
           falla: datos.fallaPrincipal,
           fechaIngreso: new Date().toISOString().slice(0, 10),
@@ -955,6 +1113,54 @@
         await guardarOrdenesEnDB();
         renderizarOrdenes(estadoFiltradoActual);
         cerrarModalNuevaOrden();
+      }
+
+      function renderizarNotas() {
+        const contenedor = document.getElementById('contenedor-notas');
+        if (!contenedor) return;
+
+        contenedor.innerHTML = '';
+
+        if (notasEnMemoria.length === 0) {
+          contenedor.innerHTML = '<p class="mensaje-vacio">No hay notas guardadas.</p>';
+          return;
+        }
+
+        notasEnMemoria.forEach(nota => {
+          const tarjeta = document.createElement('div');
+          tarjeta.className = 'nota-card';
+          tarjeta.innerHTML = `
+            <div class="nota-header">
+              <h3 class="nota-titulo">${nota.titulo}</h3>
+              <button class="btn-eliminar-nota" onclick="eliminarNota(${nota.id})">Eliminar</button>
+            </div>
+            <p class="nota-descripcion">${nota.descripcion}</p>
+          `;
+          contenedor.appendChild(tarjeta);
+        });
+      }
+
+      async function guardarNota() {
+        const titulo = document.getElementById('nota-titulo')?.value?.trim();
+        const descripcion = document.getElementById('nota-descripcion')?.value?.trim();
+
+        if (!titulo || !descripcion) {
+          alert('Completa el título y la descripción de la nota.');
+          return;
+        }
+
+        notasEnMemoria.unshift({ id: Date.now(), titulo, descripcion });
+        await guardarNotasEnDB();
+        renderizarNotas();
+
+        document.getElementById('nota-titulo').value = '';
+        document.getElementById('nota-descripcion').value = '';
+      }
+
+      async function eliminarNota(id) {
+        notasEnMemoria = notasEnMemoria.filter(nota => nota.id !== id);
+        await guardarNotasEnDB();
+        renderizarNotas();
       }
 
       function actualizarModal() {
