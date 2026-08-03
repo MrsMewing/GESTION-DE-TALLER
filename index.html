@@ -438,6 +438,16 @@
         cursor: pointer;
       }
 
+      .btn-activar-notificaciones {
+        background: #3c50e0;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
       .btn-eliminar-nota {
         background: #dc2626;
         color: #ffffff;
@@ -483,6 +493,13 @@
         color: #d1d5db;
         font-size: 14px;
         white-space: pre-wrap;
+      }
+
+      .nota-recordatorio {
+        margin: 0;
+        color: #f59e0b;
+        font-size: 13px;
+        font-weight: bold;
       }
 
       .cambio-estado-wrapper {
@@ -567,7 +584,13 @@
             <label for="nota-descripcion">Descripción</label>
             <textarea id="nota-descripcion" placeholder="Escribe la nota..."></textarea>
           </div>
+          <div class="campo-form">
+            <label for="nota-recordatorio">Fecha y hora de recordatorio</label>
+            <input id="nota-recordatorio" type="datetime-local">
+          </div>
           <button class="btn-agregar-nota" onclick="guardarNota()">Agregar nota</button>
+          <button class="btn-activar-notificaciones" type="button" onclick="activarNotificaciones()">Activar notificaciones</button>
+          <div id="estado-notificaciones" class="mensaje-vacio">Las notificaciones de esta página están por definirse.</div>
         </div>
 
         <div id="contenedor-notas" class="lista-ordenes"></div>
@@ -630,6 +653,7 @@
       let db = null;
       let ordenesEnMemoria = [];
       let notasEnMemoria = [];
+      let recordatoriosActivos = new Map();
       let ordenSeleccionada = null;
       let indiceSeccionActual = 0;
       let indiceSeccionNueva = 0;
@@ -771,6 +795,8 @@
         await cargarNotasDesdeDB();
         renderizarOrdenes(estadoFiltradoActual);
         renderizarNotas();
+        mostrarEstadoNotificaciones(obtenerEstadoNotificaciones().mensaje);
+        programarRecordatorios();
       }
 
       function renderizarOrdenes(estadoFiltrado) {
@@ -1115,6 +1141,21 @@
         cerrarModalNuevaOrden();
       }
 
+      function formatearFechaRecordatorio(recordatorio) {
+        if (!recordatorio) return 'Sin recordatorio';
+
+        const fecha = new Date(recordatorio);
+        if (Number.isNaN(fecha.getTime())) return 'Sin recordatorio';
+
+        return `⏰ ${fecha.toLocaleString('es-GT', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`;
+      }
+
       function renderizarNotas() {
         const contenedor = document.getElementById('contenedor-notas');
         if (!contenedor) return;
@@ -1135,29 +1176,163 @@
               <button class="btn-eliminar-nota" onclick="eliminarNota(${nota.id})">Eliminar</button>
             </div>
             <p class="nota-descripcion">${nota.descripcion}</p>
+            <p class="nota-recordatorio">${formatearFechaRecordatorio(nota.recordatorio)}</p>
           `;
           contenedor.appendChild(tarjeta);
+        });
+      }
+
+      function obtenerEstadoNotificaciones() {
+        const contextoSeguro = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+        if (!('Notification' in window)) {
+          return {
+            soportado: false,
+            permiso: 'unsupported',
+            mensaje: 'Este navegador no admite notificaciones. La nota se guarda, pero no podrá recordarte nada.'
+          };
+        }
+
+        if (!contextoSeguro) {
+          return {
+            soportado: false,
+            permiso: 'unsafe-context',
+            mensaje: 'La página está abierta en un contexto que no permite permisos permanentes de notificaciones. Para recibir recordatorios en un teléfono, abre esta app desde HTTPS o desde localhost, luego activa las notificaciones en el navegador.'
+          };
+        }
+
+        if (Notification.permission === 'granted') {
+          return {
+            soportado: true,
+            permiso: 'granted',
+            mensaje: 'Las notificaciones están activadas para esta página. El recordatorio puede aparecer en tu dispositivo.'
+          };
+        }
+
+        if (Notification.permission === 'denied') {
+          return {
+            soportado: true,
+            permiso: 'denied',
+            mensaje: 'Las notificaciones están desactivadas en este navegador. La nota se guarda igual, pero el recordatorio no se mostrará hasta que las actives en la configuración del navegador.'
+          };
+        }
+
+        return {
+          soportado: true,
+          permiso: 'default',
+          mensaje: 'Las notificaciones están disponibles. Presiona “Activar notificaciones” para aceptar el recordatorio y recibir el aviso en tu teléfono.'
+        };
+      }
+
+      function mostrarEstadoNotificaciones(mensaje = obtenerEstadoNotificaciones().mensaje) {
+        const contenedor = document.getElementById('estado-notificaciones');
+        if (!contenedor) return;
+        contenedor.textContent = mensaje;
+      }
+
+      async function activarNotificaciones() {
+        const estadoActual = obtenerEstadoNotificaciones();
+        mostrarEstadoNotificaciones(estadoActual.mensaje);
+
+        if (!estadoActual.soportado) {
+          return;
+        }
+
+        if (estadoActual.permiso === 'granted') {
+          programarRecordatorios();
+          return;
+        }
+
+        if (estadoActual.permiso === 'denied') {
+          return;
+        }
+
+        const permiso = await Notification.requestPermission();
+        const estadoNuevo = obtenerEstadoNotificaciones();
+        mostrarEstadoNotificaciones(estadoNuevo.mensaje);
+
+        if (permiso === 'granted') {
+          programarRecordatorios();
+        }
+      }
+
+      function solicitarPermisoNotificaciones() {
+        const estado = obtenerEstadoNotificaciones();
+        mostrarEstadoNotificaciones(estado.mensaje);
+        return estado.soportado && estado.permiso === 'granted';
+      }
+
+      function mostrarNotificacionNota(nota) {
+        if (!('Notification' in window)) return;
+
+        if (Notification.permission !== 'granted') return;
+
+        const titulo = `Recordatorio: ${nota.titulo}`;
+        const cuerpo = nota.descripcion || 'Revisa tu nota guardada.';
+        new Notification(titulo, {
+          body: cuerpo,
+          icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'
+        });
+      }
+
+      function programarRecordatorios() {
+        recordatoriosActivos.forEach(timer => clearTimeout(timer));
+        recordatoriosActivos.clear();
+
+        notasEnMemoria.forEach(nota => {
+          if (!nota.recordatorio) return;
+
+          const fechaRecordatorio = new Date(nota.recordatorio);
+          if (Number.isNaN(fechaRecordatorio.getTime())) return;
+
+          const demora = fechaRecordatorio.getTime() - Date.now();
+
+          if (demora <= 0) {
+            mostrarNotificacionNota(nota);
+            return;
+          }
+
+          const timer = setTimeout(() => {
+            mostrarNotificacionNota(nota);
+            recordatoriosActivos.delete(nota.id);
+          }, demora);
+
+          recordatoriosActivos.set(nota.id, timer);
         });
       }
 
       async function guardarNota() {
         const titulo = document.getElementById('nota-titulo')?.value?.trim();
         const descripcion = document.getElementById('nota-descripcion')?.value?.trim();
+        const recordatorio = document.getElementById('nota-recordatorio')?.value || '';
 
         if (!titulo || !descripcion) {
           alert('Completa el título y la descripción de la nota.');
           return;
         }
 
-        notasEnMemoria.unshift({ id: Date.now(), titulo, descripcion });
+        const permisoNotificaciones = solicitarPermisoNotificaciones();
+
+        notasEnMemoria.unshift({ id: Date.now(), titulo, descripcion, recordatorio });
         await guardarNotasEnDB();
         renderizarNotas();
 
+        if (permisoNotificaciones) {
+          programarRecordatorios();
+        }
+
         document.getElementById('nota-titulo').value = '';
         document.getElementById('nota-descripcion').value = '';
+        document.getElementById('nota-recordatorio').value = '';
       }
 
       async function eliminarNota(id) {
+        const timerActivo = recordatoriosActivos.get(id);
+        if (timerActivo) {
+          clearTimeout(timerActivo);
+          recordatoriosActivos.delete(id);
+        }
+
         notasEnMemoria = notasEnMemoria.filter(nota => nota.id !== id);
         await guardarNotasEnDB();
         renderizarNotas();
