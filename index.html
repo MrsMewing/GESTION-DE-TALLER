@@ -532,150 +532,13 @@
 
     <!-- LÓGICA Y DATOS MODIFICADOS -->
     <script>
-      const baseDeDatosOrdenes = [
-        {
-          numeroOrden: "ORD-001",
-          equipo: "iPhone 11",
-          falla: "No enciende (Corto en VCC_MAIN)",
-          fechaIngreso: "2026-07-25",
-          estado: "pendiente",
-          cliente: {
-            nombre: "María López",
-            telefono: "+52 55 2222 3344",
-            correo: "maria.lopez@email.com",
-            direccion: "Calle 5, Col. Centro, CDMX"
-          },
-          equipoInfo: {
-            marca: "Apple",
-            modelo: "iPhone 11",
-            imei: "35 3660 1234 5678",
-            accesorios: "Cargador original, funda y audífonos",
-            imagenes: [
-              "https://placehold.co/600x340/3c50e0/ffffff?text=Frente+iPhone",
-              "https://placehold.co/600x340/243245/ffffff?text=Trasero+iPhone",
-              "https://placehold.co/600x340/10b981/ffffff?text=Pantalla+iPhone"
-            ]
-          },
-          fallaInfo: {
-            descripcion: "El equipo no responde al encender y se observa un corto en la línea VCC_MAIN.",
-            prioridad: "Alta",
-            observacion: "Necesita revisión de alimentación y limpieza de la placa."
-          }
-        },
-        {
-          numeroOrden: "ORD-002",
-          equipo: "Samsung S21",
-          falla: "Reballing de Codec de Audio",
-          fechaIngreso: "2026-07-26",
-          estado: "proceso",
-          cliente: {
-            nombre: "Carlos Ramírez",
-            telefono: "+52 55 7777 1234",
-            correo: "carlos.ramirez@email.com",
-            direccion: "Av. Reforma 120, CDMX"
-          },
-          equipoInfo: {
-            marca: "Samsung",
-            modelo: "S21",
-            imei: "35 4567 9876 5432",
-            accesorios: "Cargador sin original",
-            imagenes: [
-              "https://placehold.co/600x340/3c50e0/ffffff?text=Samsung+Frente",
-              "https://placehold.co/600x340/243245/ffffff?text=Samsung+Trasero"
-            ]
-          },
-          fallaInfo: {
-            descripcion: "El audio no funciona en llamadas y la salida no se reconoce correctamente.",
-            prioridad: "Media",
-            observacion: "Se requiere reballing en el codec de audio y prueba de continuidad."
-          }
-        },
-        {
-          numeroOrden: "ORD-003",
-          equipo: "Xiaomi Note 10",
-          falla: "Cambio de Pin de Carga FPC",
-          fechaIngreso: "2026-07-27",
-          estado: "terminada",
-          cliente: {
-            nombre: "Laura Torres",
-            telefono: "+52 55 5555 7676",
-            correo: "laura.torres@email.com",
-            direccion: "Paseo de la Reforma 45, CDMX"
-          },
-          equipoInfo: {
-            marca: "Xiaomi",
-            modelo: "Note 10",
-            imei: "35 1234 6789 4567",
-            accesorios: "Cargador, funda y vidrio templado",
-            imagenes: [
-              "https://placehold.co/600x340/10b981/ffffff?text=Xiaomi+Frente",
-              "https://placehold.co/600x340/243245/ffffff?text=Xiaomi+Detalle"
-            ]
-          },
-          fallaInfo: {
-            descripcion: "El equipo carga de forma intermitente y el pin del conector presenta desgaste físico.",
-            prioridad: "Media",
-            observacion: "Se realizó cambio de FPC y prueba completa de carga."
-          }
-        },
-        {
-          numeroOrden: "ORD-004",
-          equipo: "Huawei P30 Lite",
-          falla: "Pantalla rota y tapa trasera dañada",
-          fechaIngreso: "2026-07-28",
-          estado: "pendiente",
-          cliente: {
-            nombre: "José Benítez",
-            telefono: "+52 55 3333 8866",
-            correo: "jose.benitez@email.com",
-            direccion: "Calle 7, Col. Del Valle, CDMX"
-          },
-          equipoInfo: {
-            marca: "Huawei",
-            modelo: "P30 Lite",
-            imei: "35 7654 3210 1122",
-            accesorios: "Tapa trasera, película protectora",
-            imagenes: [
-              "https://placehold.co/600x340/ff9800/000000?text=Huawei+Frente",
-              "https://placehold.co/600x340/243245/ffffff?text=Huawei+Tapa"
-            ]
-          },
-          fallaInfo: {
-            descripcion: "La pantalla presenta rotura total y la tapa trasera tiene golpes visibles.",
-            prioridad: "Baja",
-            observacion: "Se necesita revisión de caja y posible cambio de panel."
-          }
-        },
-        {
-          numeroOrden: "ORD-005",
-          equipo: "iPad Air 3",
-          falla: "Fuga en línea de retroiluminación",
-          fechaIngreso: "2026-07-29",
-          estado: "proceso",
-          cliente: {
-            nombre: "Sofía Méndez",
-            telefono: "+52 55 4444 9090",
-            correo: "sofia.mendez@email.com",
-            direccion: "Calle de la Aurora 18, Estado de México"
-          },
-          equipoInfo: {
-            marca: "Apple",
-            modelo: "iPad Air 3",
-            imei: "35 9012 3456 7890",
-            accesorios: "Apple Pencil y funda",
-            imagenes: [
-              "https://placehold.co/600x340/3c50e0/ffffff?text=iPad+Frente",
-              "https://placehold.co/600x340/243245/ffffff?text=iPad+Detalle"
-            ]
-          },
-          fallaInfo: {
-            descripcion: "La pantalla presenta fuga de iluminación en la parte inferior y brillo irregular.",
-            prioridad: "Alta",
-            observacion: "Revisión de retroiluminación y posible cambio de módulo."
-          }
-        }
-      ];
+      const DB_NAME = 'tallerDB';
+      const STORE_NAME = 'ordenes';
+      const DB_VERSION = 1;
+      const CLEANUP_KEY = 'taller-db-cleanup-done';
 
+      let db = null;
+      let ordenesEnMemoria = [];
       let ordenSeleccionada = null;
       let indiceSeccionActual = 0;
       let indiceSeccionNueva = 0;
@@ -684,11 +547,102 @@
       const seccionesModal = ["cliente", "equipo", "falla"];
       const seccionesNuevaModal = ["cliente", "equipo", "falla", "resumen"];
 
+      function abrirBaseDeDatos() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+              const store = database.createObjectStore(STORE_NAME, { keyPath: 'numeroOrden' });
+              store.createIndex('estado', 'estado', { unique: false });
+            }
+          };
+
+          request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function cargarOrdenesDesdeDB() {
+        return new Promise((resolve, reject) => {
+          if (!db) {
+            reject(new Error('La base de datos aún no está abierta.'));
+            return;
+          }
+
+          const transaccion = db.transaction(STORE_NAME, 'readonly');
+          const store = transaccion.objectStore(STORE_NAME);
+          const request = store.getAll();
+
+          request.onsuccess = () => {
+            ordenesEnMemoria = request.result || [];
+            resolve(ordenesEnMemoria);
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function limpiarBaseDeDatos() {
+        return new Promise((resolve, reject) => {
+          if (!db) {
+            reject(new Error('La base de datos aún no está abierta.'));
+            return;
+          }
+
+          const transaccion = db.transaction(STORE_NAME, 'readwrite');
+          const store = transaccion.objectStore(STORE_NAME);
+          const request = store.clear();
+
+          request.onsuccess = () => {
+            ordenesEnMemoria = [];
+            resolve();
+          };
+
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function guardarOrdenesEnDB() {
+        return new Promise((resolve, reject) => {
+          if (!db) {
+            reject(new Error('La base de datos aún no está abierta.'));
+            return;
+          }
+
+          const transaccion = db.transaction(STORE_NAME, 'readwrite');
+          const store = transaccion.objectStore(STORE_NAME);
+
+          transaccion.oncomplete = () => resolve();
+          transaccion.onerror = () => reject(transaccion.error);
+
+          store.clear();
+          ordenesEnMemoria.forEach(orden => store.put(orden));
+        });
+      }
+
+      async function iniciarAplicacion() {
+        await abrirBaseDeDatos();
+
+        if (!localStorage.getItem(CLEANUP_KEY)) {
+          await limpiarBaseDeDatos();
+          localStorage.setItem(CLEANUP_KEY, '1');
+        }
+
+        await cargarOrdenesDesdeDB();
+        renderizarOrdenes(estadoFiltradoActual);
+      }
+
       function renderizarOrdenes(estadoFiltrado) {
         const contenedor = document.getElementById('contenedor-tarjetas');
         contenedor.innerHTML = "";
 
-        const ordenesFiltradas = baseDeDatosOrdenes.filter(orden => orden.estado === estadoFiltrado);
+        const ordenesFiltradas = ordenesEnMemoria.filter(orden => orden.estado === estadoFiltrado);
 
         if (ordenesFiltradas.length === 0) {
           contenedor.innerHTML = `<p class="mensaje-vacio">No hay órdenes en este estado 👍</p>`;
@@ -812,15 +766,16 @@
         opciones.classList.toggle('activo');
       }
 
-      function cambiarEstadoOrden(nuevoEstado) {
+      async function cambiarEstadoOrden(nuevoEstado) {
         if (!ordenSeleccionada || nuevoEstado === ordenSeleccionada.estado) return;
 
-        const ordenEnBase = baseDeDatosOrdenes.find(orden => orden.numeroOrden === ordenSeleccionada.numeroOrden);
+        const ordenEnBase = ordenesEnMemoria.find(orden => orden.numeroOrden === ordenSeleccionada.numeroOrden);
         if (!ordenEnBase) return;
 
         ordenEnBase.estado = nuevoEstado;
         ordenSeleccionada.estado = nuevoEstado;
 
+        await guardarOrdenesEnDB();
         const estadoDesdeFiltro = estadoFiltradoActual;
         renderizarOrdenes(estadoDesdeFiltro);
         actualizarModal();
@@ -958,15 +913,20 @@
         });
       }
 
-      function guardarNuevaOrden() {
+      async function guardarNuevaOrden() {
         const datos = obtenerDatosFormularioNuevaOrden();
         if (!datos.nombre || !datos.fallaPrincipal || !datos.marca || !datos.modelo) {
           alert('Completa al menos nombre, marca, modelo y falla principal para guardar la orden.');
           return;
         }
 
+        const ultimoNumero = ordenesEnMemoria.reduce((maximo, orden) => {
+          const numero = Number((orden.numeroOrden.match(/\d+/) || ['0'])[0]);
+          return Math.max(maximo, numero);
+        }, 0);
+
         const nuevaOrden = {
-          numeroOrden: `ORD-${String(baseDeDatosOrdenes.length + 1).padStart(3, '0')}`,
+          numeroOrden: `ORD-${String(ultimoNumero + 1).padStart(3, '0')}`,
           equipo: datos.modelo || 'Equipo sin modelo',
           falla: datos.fallaPrincipal,
           fechaIngreso: new Date().toISOString().slice(0, 10),
@@ -991,7 +951,8 @@
           }
         };
 
-        baseDeDatosOrdenes.unshift(nuevaOrden);
+        ordenesEnMemoria.unshift(nuevaOrden);
+        await guardarOrdenesEnDB();
         renderizarOrdenes(estadoFiltradoActual);
         cerrarModalNuevaOrden();
       }
@@ -1048,7 +1009,7 @@
 
       }
 
-      renderizarOrdenes('pendiente');
+      window.addEventListener('DOMContentLoaded', iniciarAplicacion);
     </script>
 
   </body>
