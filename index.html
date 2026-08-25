@@ -826,10 +826,10 @@
           tarjeta.innerHTML = `
             <div class="tarjeta-header">
               <span class="orden-numero">${orden.numeroOrden}</span>
-              <span class="orden-fecha">📅 ${orden.fechaIngreso}</span>
+              <span class="orden-fecha">📅 ${orden.fechaIngreso} 🕒 ${orden.horaIngreso || '-'}</span>
             </div>
             <h3>${orden.equipo}</h3>
-            <p><strong>Falla Principal:</strong> ${orden.falla}</p>
+            <p><strong>Falla principal:</strong> ${orden.falla}</p>
             <p class="estado-texto txt-${orden.estado}">● ${textoEstadoVisual}</p>
             <button class="btn-eliminar-orden-tarjeta" onclick="event.stopPropagation(); eliminarOrdenDesdeTarjeta('${orden.numeroOrden}')">Eliminar</button>
           `;
@@ -978,13 +978,14 @@
           nombre: document.getElementById('cliente-nombre')?.value?.trim() || '',
           telefono: document.getElementById('cliente-telefono')?.value?.trim() || '',
           direccion,
-          marca: document.getElementById('equipo-marca')?.value?.trim() || '',
           modelo: document.getElementById('equipo-modelo')?.value?.trim() || '',
           imei,
           accesorios: document.getElementById('equipo-accesorios')?.value?.trim() || '',
           fallaPrincipal: document.getElementById('falla-principal')?.value?.trim() || '',
           descripcion: document.getElementById('falla-descripcion')?.value?.trim() || '',
           fallasExtras: document.getElementById('falla-extras')?.value?.trim() || '',
+          precioReparacion: document.getElementById('falla-precio')?.value?.trim() || '',
+          adelanto: document.getElementById('falla-adelanto')?.value?.trim() || '',
           imagenes: [...fotosNuevaOrden]
         };
       }
@@ -1037,13 +1038,14 @@
             <div class="campo-form"><label>Nombre</label><input id="cliente-nombre" type="text" value="${datos.nombre}"></div>
             <div class="campo-form"><label>Teléfono</label><input id="cliente-telefono" type="text" value="${datos.telefono}"></div>
             <div class="campo-form"><label>Dirección</label><input id="cliente-direccion" type="text" value="${datos.direccion}"></div>
+            <div class="campo-form"><label>Precio de la reparación</label><input id="falla-precio" type="number" min="0" step="0.01" value="${datos.precioReparacion}"></div>
+            <div class="campo-form"><label>Adelanto</label><input id="falla-adelanto" type="number" min="0" step="0.01" value="${datos.adelanto}"></div>
           </div>
         `;
 
         document.getElementById('panel-nueva-equipo').innerHTML = `
           <h3>Información del equipo</h3>
           <div class="form-grid">
-            <div class="campo-form"><label>Marca</label><input id="equipo-marca" type="text" value="${datos.marca}"></div>
             <div class="campo-form"><label>Modelo</label><input id="equipo-modelo" type="text" value="${datos.modelo}"></div>
             <div class="campo-form"><label>IMEI</label><input id="equipo-imei" type="text" value="${datos.imei}"></div>
             <div class="campo-form"><label>Accesorios</label><input id="equipo-accesorios" type="text" value="${datos.accesorios}"></div>
@@ -1077,13 +1079,14 @@
             <div class="resumen-item"><span>Nombre</span><span>${datos.nombre || '-'}</span></div>
             <div class="resumen-item"><span>Teléfono</span><span>${datos.telefono || '-'}</span></div>
             <div class="resumen-item"><span>Dirección</span><span>${datos.direccion || 'El progreso, Jutiapa'}</span></div>
-            <div class="resumen-item"><span>Marca</span><span>${datos.marca || '-'}</span></div>
             <div class="resumen-item"><span>Modelo</span><span>${datos.modelo || '-'}</span></div>
             <div class="resumen-item"><span>IMEI</span><span>${datos.imei || 'Sin IMEI'}</span></div>
             <div class="resumen-item"><span>Accesorios</span><span>${datos.accesorios || '-'}</span></div>
             <div class="resumen-item"><span>Falla principal</span><span>${datos.fallaPrincipal || '-'}</span></div>
             <div class="resumen-item"><span>Descripción</span><span>${datos.descripcion || '-'}</span></div>
             <div class="resumen-item"><span>Fallas extras</span><span>${datos.fallasExtras || '-'}</span></div>
+            <div class="resumen-item"><span>Precio de la reparación</span><span>${datos.precioReparacion || '-'}</span></div>
+            <div class="resumen-item"><span>Adelanto</span><span>${datos.adelanto || '-'}</span></div>
           </div>
           <div class="wizard-acciones">
             <button class="btn-aceptar" onclick="guardarNuevaOrden()">Aceptar</button>
@@ -1104,8 +1107,8 @@
 
       async function guardarNuevaOrden() {
         const datos = obtenerDatosFormularioNuevaOrden();
-        if (!datos.nombre || !datos.fallaPrincipal || !datos.marca || !datos.modelo) {
-          alert('Completa al menos nombre, marca, modelo y falla principal para guardar la orden.');
+        if (!datos.nombre || !datos.fallaPrincipal || !datos.modelo) {
+          alert('Completa al menos nombre, modelo y falla principal para guardar la orden.');
           return;
         }
 
@@ -1114,6 +1117,7 @@
           equipo: datos.modelo || 'Equipo sin modelo',
           falla: datos.fallaPrincipal,
           fechaIngreso: new Date().toISOString().slice(0, 10),
+          horaIngreso: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
           estado: 'pendiente',
           cliente: {
             nombre: datos.nombre,
@@ -1122,7 +1126,6 @@
             direccion: datos.direccion || 'El progreso, Jutiapa'
           },
           equipoInfo: {
-            marca: datos.marca || '',
             modelo: datos.modelo || '',
             imei: datos.imei || 'Sin IMEI',
             accesorios: datos.accesorios || '',
@@ -1130,8 +1133,10 @@
           },
           fallaInfo: {
             descripcion: datos.descripcion,
+            observacion: datos.fallasExtras,
             prioridad: 'Sin definir',
-            observacion: datos.fallasExtras
+            precioReparacion: datos.precioReparacion,
+            adelanto: datos.adelanto
           }
         };
 
@@ -1355,7 +1360,6 @@
 
         panelEquipo.innerHTML = `
           <h3>Información del equipo</h3>
-          <div class="detalle-item"><span>Marca</span><span>${ordenSeleccionada.equipoInfo.marca}</span></div>
           <div class="detalle-item"><span>Modelo</span><span>${ordenSeleccionada.equipoInfo.modelo}</span></div>
           <div class="detalle-item"><span>IMEI</span><span>${ordenSeleccionada.equipoInfo.imei}</span></div>
           <div class="detalle-item"><span>Accesorios</span><span>${ordenSeleccionada.equipoInfo.accesorios}</span></div>
@@ -1369,8 +1373,10 @@
         panelFalla.innerHTML = `
           <h3>Información de la falla</h3>
           <div class="detalle-item"><span>Falla principal</span><span>${ordenSeleccionada.falla}</span></div>
-          <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion}</span></div>
-          <div class="detalle-item"><span>Fallas extras</span><span>${ordenSeleccionada.fallaInfo.observacion}</span></div>
+          <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion || '-'}</span></div>
+          <div class="detalle-item"><span>Fallas extras</span><span>${ordenSeleccionada.fallaInfo.observacion || '-'}</span></div>
+          <div class="detalle-item"><span>Precio de la reparación</span><span>${ordenSeleccionada.fallaInfo.precioReparacion || '-'}</span></div>
+          <div class="detalle-item"><span>Adelanto</span><span>${ordenSeleccionada.fallaInfo.adelanto || '-'}</span></div>
 
           <div class="cambio-estado-wrapper">
             <button class="btn-cambiar-estado" onclick="toggleCambioEstado()">Cambiar estado</button>
