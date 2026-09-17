@@ -196,6 +196,65 @@ body {
         cursor: pointer;
       }
 
+      .btn-generar-comprobante {
+        width: 100%;
+        margin: 16px 0 10px;
+        padding: 11px 14px;
+        border: 0;
+        border-radius: 8px;
+        background: #0f766e;
+        color: #ffffff;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .btn-generar-comprobante:hover { background: #115e59; }
+      .filtro-fecha-ordenes {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .filtro-fecha-ordenes input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #2e3a50;
+        background: #243245;
+        color: #ffffff;
+      }
+
+      .btn-filtrar-fecha,
+      .btn-limpiar-fecha {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      .btn-filtrar-fecha {
+        background: #3c50e0;
+        color: #ffffff;
+      }
+
+      .btn-limpiar-fecha {
+        background: #2c374e;
+        color: #ffffff;
+      }
+
+      .btn-filtrar-fecha.activo,
+      .btn-limpiar-fecha.activo {
+        outline: 3px solid rgba(255, 255, 255, 0.35);
+        outline-offset: 1px;
+      }
+
+      .titulo-filtro-ordenes {
+        margin: 8px 0 14px;
+        color: #f4f7fb;
+        font-size: 18px;
+        text-align: left;
+      }
       .tabs-secciones {
         display: grid;
         grid-template-columns: repeat(3, 1fr);

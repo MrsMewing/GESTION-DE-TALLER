@@ -32,6 +32,13 @@
 
         <button class="btn-crear-orden" onclick="abrirModalNuevaOrden()">+ NUEVA ORDEN</button>
 
+        <div class="filtro-fecha-ordenes">
+          <input id="filtro-fecha-ordenes" type="date">
+          <button class="btn-filtrar-fecha" onclick="filtrarPorFecha()">FILTRAR</button>
+          <button class="btn-limpiar-fecha" onclick="limpiarFiltroFecha()">TODAS</button>
+        </div>
+        <h2 id="titulo-filtro-ordenes" class="titulo-filtro-ordenes">Órdenes de Hoy</h2>
+
         <!-- Contenedor dinámico de tarjetas -->
         <div id="contenedor-tarjetas" class="lista-ordenes"></div>
 
@@ -106,10 +113,9 @@
         </div>
       </div>
     </div>
-
-
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="script.js"></script>
+    <script src="generador_de_comprobante.js"></script>
 
   </body>
 </html>

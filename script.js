@@ -12,6 +12,8 @@ const DB_NAME = 'tallerDB';
     let indiceSeccionActual = 0;
     let indiceSeccionNueva = 0;
     let estadoFiltradoActual = 'pendiente';
+    let modoFiltroFecha = 'hoy';
+    let filtroFechaActual = obtenerFechaActualLocal();
     let fotosNuevaOrden = [];
     const seccionesModal = ["cliente", "equipo", "falla"];
     const seccionesNuevaModal = ["cliente", "equipo", "falla", "resumen"];
@@ -147,26 +149,160 @@ const DB_NAME = 'tallerDB';
 
     await cargarOrdenesDesdeDB();
     await cargarNotasDesdeDB();
+    establecerFiltroHoy();
     renderizarOrdenes(estadoFiltradoActual);
     renderizarNotas();
     mostrarEstadoNotificaciones(obtenerEstadoNotificaciones().mensaje);
     programarRecordatorios();
     }
 
+    function obtenerHoraActualLocal() {
+    return new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    }
+
+    function obtenerFechaActualLocal() {
+    const ahora = new Date();
+    const año = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
+    }
+
+    function obtenerTiempoRestanteEntrega(orden) {
+    const horaEntrega = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
+    const fechaEntrega = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
+
+    if (!horaEntrega || !fechaEntrega) {
+        return 'Sin hora de entrega';
+    }
+
+    const fechaObjetivo = new Date(`${fechaEntrega}T${horaEntrega}:00`);
+    const ahora = new Date();
+    const diferenciaMs = fechaObjetivo.getTime() - ahora.getTime();
+
+    if (Number.isNaN(fechaObjetivo.getTime())) {
+        return 'Hora no válida';
+    }
+
+    if (diferenciaMs <= 0) {
+        return 'Entrega vencida';
+    }
+
+    const totalSegundos = Math.floor(diferenciaMs / 1000);
+    const horas = Math.floor(totalSegundos / 3600);
+    const minutos = Math.floor((totalSegundos % 3600) / 60);
+    const segundos = totalSegundos % 60;
+
+    return `${horas}h ${String(minutos).padStart(2, '0')}m ${String(segundos).padStart(2, '0')}s`;
+    }
+
+    function actualizarTiempoRestanteEnTarjetas() {
+    const tarjetas = document.querySelectorAll('.tarjeta-orden');
+
+    tarjetas.forEach(tarjeta => {
+        const numeroOrden = tarjeta.dataset.numeroOrden;
+        const orden = ordenesEnMemoria.find(item => item.numeroOrden === numeroOrden);
+        const elementoTiempo = tarjeta.querySelector('.tiempo-restante-valor');
+
+        if (!orden || !elementoTiempo) return;
+
+        elementoTiempo.textContent = obtenerTiempoRestanteEntrega(orden);
+    });
+    }
+
+    function obtenerFechasOrden(orden) {
+    return [
+        orden?.fechaIngreso,
+        orden?.fechaEntrega,
+        orden?.fallaInfo?.fechaEntrega
+    ].filter(Boolean);
+    }
+
+    function filtrarPorFecha() {
+    const inputFecha = document.getElementById('filtro-fecha-ordenes');
+    const fechaSeleccionada = inputFecha?.value || '';
+
+    if (!fechaSeleccionada || (modoFiltroFecha === 'fecha' && fechaSeleccionada === filtroFechaActual)
+        || (modoFiltroFecha === 'hoy' && fechaSeleccionada === obtenerFechaActualLocal())) {
+        establecerFiltroHoy();
+        renderizarOrdenes(estadoFiltradoActual);
+        return;
+    }
+
+    modoFiltroFecha = 'fecha';
+    filtroFechaActual = fechaSeleccionada;
+    actualizarControlesFiltroFecha();
+    renderizarOrdenes(estadoFiltradoActual);
+    }
+
+    function limpiarFiltroFecha() {
+    if (modoFiltroFecha === 'todas') {
+        establecerFiltroHoy();
+    } else {
+        modoFiltroFecha = 'todas';
+        filtroFechaActual = '';
+        actualizarControlesFiltroFecha();
+    }
+    renderizarOrdenes(estadoFiltradoActual);
+    }
+
+    function establecerFiltroHoy() {
+    modoFiltroFecha = 'hoy';
+    filtroFechaActual = obtenerFechaActualLocal();
+    actualizarControlesFiltroFecha();
+    }
+
+    function actualizarControlesFiltroFecha() {
+    const inputFecha = document.getElementById('filtro-fecha-ordenes');
+    const botonFiltrar = document.querySelector('.btn-filtrar-fecha');
+    const botonTodas = document.querySelector('.btn-limpiar-fecha');
+    const titulo = document.getElementById('titulo-filtro-ordenes');
+
+    if (inputFecha && modoFiltroFecha !== 'todas') inputFecha.value = filtroFechaActual;
+    botonFiltrar?.classList.toggle('activo', modoFiltroFecha !== 'todas');
+    botonTodas?.classList.toggle('activo', modoFiltroFecha === 'todas');
+
+    if (!titulo) return;
+
+    if (modoFiltroFecha === 'hoy') {
+        titulo.textContent = 'Órdenes de Hoy';
+    } else if (modoFiltroFecha === 'fecha') {
+        titulo.textContent = `Órdenes del ${filtroFechaActual}`;
+    } else {
+        titulo.textContent = 'Todas las Órdenes';
+    }
+    }
+
     function renderizarOrdenes(estadoFiltrado) {
     const contenedor = document.getElementById('contenedor-tarjetas');
     contenedor.innerHTML = "";
 
-    const ordenesFiltradas = ordenesEnMemoria.filter(orden => orden.estado === estadoFiltrado);
+    const ordenesFiltradas = ordenesEnMemoria.filter(orden => {
+        const coincideEstado = orden.estado === estadoFiltrado;
+        if (!coincideEstado) return false;
+
+        if (modoFiltroFecha === 'todas') return true;
+
+        return obtenerFechasOrden(orden).includes(filtroFechaActual);
+    });
 
     if (ordenesFiltradas.length === 0) {
-        contenedor.innerHTML = `<p class="mensaje-vacio">No hay órdenes en este estado 👍</p>`;
+        const textoSinResultados = modoFiltroFecha !== 'todas'
+        ? `No hay órdenes para el día ${filtroFechaActual}`
+        : `No hay órdenes en este estado 👍`;
+
+        contenedor.innerHTML = `<p class="mensaje-vacio">${textoSinResultados}</p>`;
         return;
     }
 
     ordenesFiltradas.forEach(orden => {
         const tarjeta = document.createElement('div');
         tarjeta.className = `tarjeta-orden ${orden.estado}`;
+        tarjeta.dataset.numeroOrden = orden.numeroOrden;
         tarjeta.addEventListener('click', (event) => {
         if (event.target.closest('.btn-eliminar-orden-tarjeta')) return;
         abrirModalOrden(orden);
@@ -177,13 +313,26 @@ const DB_NAME = 'tallerDB';
         if (orden.estado === 'proceso') textoEstadoVisual = "En proceso de reparación";
         if (orden.estado === 'terminada') textoEstadoVisual = "Terminada / Lista para entrega";
 
+        const horaEntrega = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega || 'Sin horario';
+        const fechaEntrega = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega || 'Sin fecha';
+        const tiempoRestante = obtenerTiempoRestanteEntrega(orden);
+
         tarjeta.innerHTML = `
         <div class="tarjeta-header">
             <span class="orden-numero">${orden.numeroOrden}</span>
             <span class="orden-fecha">📅 ${orden.fechaIngreso} 🕒 ${orden.horaIngreso || '-'}</span>
         </div>
-        <h3>${orden.equipo}</h3>
-        <p><strong>Falla principal:</strong> ${orden.falla}</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+            <div style="flex: 1;">
+            <h3>${orden.equipo}</h3>
+            <p><strong>Falla principal:</strong> ${orden.falla}</p>
+            </div>
+            <div style="min-width: 160px; text-align: right; font-size: 12px; color: #dfe9f3;">
+            <div>📅 ${fechaEntrega}</div>
+            <div>🕒 ${horaEntrega}</div>
+            <div class="tiempo-restante-valor" style="margin-top: 6px; font-weight: 700; color: #f6c76e;">${tiempoRestante}</div>
+            </div>
+        </div>
         <p class="estado-texto txt-${orden.estado}">● ${textoEstadoVisual}</p>
         <button class="btn-eliminar-orden-tarjeta" onclick="event.stopPropagation(); eliminarOrdenDesdeTarjeta('${orden.numeroOrden}')">Eliminar</button>
         `;
@@ -324,20 +473,75 @@ const DB_NAME = 'tallerDB';
     actualizarModal();
     }
 
+    function obtenerHorasDeEntrega() {
+    const horas = [];
+
+    for (let hora = 8; hora <= 18; hora++) {
+        const horaBase = `${String(hora).padStart(2, '0')}:00`;
+        horas.push(horaBase);
+
+        if (hora < 18) {
+        horas.push(`${String(hora).padStart(2, '0')}:30`);
+        }
+    }
+
+    return horas;
+    }
+
+    function obtenerHorasApartadas() {
+    const horasReservadas = new Set();
+
+    ordenesEnMemoria.forEach(orden => {
+        const fechaGuardada = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
+        const horaGuardada = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
+
+        if (!fechaGuardada || !horaGuardada) return;
+
+        horasReservadas.add(horaGuardada);
+    });
+
+    return [...horasReservadas].sort();
+    }
+
+    function validarEntregaNoDuplicada(fechaEntrega, horaEntrega) {
+    if (!fechaEntrega || !horaEntrega) return true;
+
+    const fechaHora = `${fechaEntrega}T${horaEntrega}`;
+    const yaExiste = ordenesEnMemoria.some(orden => {
+        const fechaGuardada = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
+        const horaGuardada = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
+
+        if (!fechaGuardada || !horaGuardada) return false;
+
+        return `${fechaGuardada}T${horaGuardada}` === fechaHora;
+    });
+
+    if (yaExiste) {
+        alert(`La fecha y hora ${fechaEntrega} ${horaEntrega} ya están apartadas. Elige otra.`);
+        return false;
+    }
+
+    return true;
+    }
+
     function obtenerDatosFormularioNuevaOrden() {
     const direccion = document.getElementById('cliente-direccion')?.value?.trim() || 'El progreso, Jutiapa';
-    const imei = document.getElementById('equipo-imei')?.value?.trim() || 'Sin IMEI';
+    const estadoTelefono = document.getElementById('equipo-estado')?.value?.trim() || '';
+    const fechaEntrega = document.getElementById('falla-fecha-entrega')?.value?.trim() || '';
+    const horaEntregaAlterna = document.getElementById('falla-hora-entrega-extra')?.value?.trim() || '';
 
     return {
         nombre: document.getElementById('cliente-nombre')?.value?.trim() || '',
         telefono: document.getElementById('cliente-telefono')?.value?.trim() || '',
         direccion,
         modelo: document.getElementById('equipo-modelo')?.value?.trim() || '',
-        imei,
+        estadoTelefono,
         accesorios: document.getElementById('equipo-accesorios')?.value?.trim() || '',
         fallaPrincipal: document.getElementById('falla-principal')?.value?.trim() || '',
         descripcion: document.getElementById('falla-descripcion')?.value?.trim() || '',
-        fallasExtras: document.getElementById('falla-extras')?.value?.trim() || '',
+        horaEntrega: document.getElementById('falla-hora-entrega')?.value?.trim() || '',
+        fechaEntrega,
+        horaEntregaAlterna,
         precioReparacion: document.getElementById('falla-precio')?.value?.trim() || '',
         adelanto: document.getElementById('falla-adelanto')?.value?.trim() || '',
         imagenes: [...fotosNuevaOrden]
@@ -385,6 +589,10 @@ const DB_NAME = 'tallerDB';
 
     function actualizarModalNuevo() {
     const datos = obtenerDatosFormularioNuevaOrden();
+    const horasDisponibles = obtenerHorasDeEntrega();
+    const horasApartadas = new Set(obtenerHorasApartadas());
+    const horaActual = obtenerHoraActualLocal();
+    const horaDefecto = datos.horaEntrega || horaActual;
 
     document.getElementById('panel-nueva-cliente').innerHTML = `
         <h3>Información de cliente</h3>
@@ -392,8 +600,6 @@ const DB_NAME = 'tallerDB';
         <div class="campo-form"><label>Nombre</label><input id="cliente-nombre" type="text" value="${datos.nombre}"></div>
         <div class="campo-form"><label>Teléfono</label><input id="cliente-telefono" type="text" value="${datos.telefono}"></div>
         <div class="campo-form"><label>Dirección</label><input id="cliente-direccion" type="text" value="${datos.direccion}"></div>
-        <div class="campo-form"><label>Precio de la reparación</label><input id="falla-precio" type="number" min="0" step="0.01" value="${datos.precioReparacion}"></div>
-        <div class="campo-form"><label>Adelanto</label><input id="falla-adelanto" type="number" min="0" step="0.01" value="${datos.adelanto}"></div>
         </div>
     `;
 
@@ -401,7 +607,7 @@ const DB_NAME = 'tallerDB';
         <h3>Información del equipo</h3>
         <div class="form-grid">
         <div class="campo-form"><label>Modelo</label><input id="equipo-modelo" type="text" value="${datos.modelo}"></div>
-        <div class="campo-form"><label>IMEI</label><input id="equipo-imei" type="text" value="${datos.imei}"></div>
+        <div class="campo-form"><label>Estado del teléfono</label><textarea id="equipo-estado">${datos.estadoTelefono}</textarea></div>
         <div class="campo-form"><label>Accesorios</label><input id="equipo-accesorios" type="text" value="${datos.accesorios}"></div>
         </div>
 
@@ -423,7 +629,26 @@ const DB_NAME = 'tallerDB';
         <div class="form-grid">
         <div class="campo-form"><label>Falla principal</label><input id="falla-principal" type="text" value="${datos.fallaPrincipal}"></div>
         <div class="campo-form"><label>Descripción</label><textarea id="falla-descripcion">${datos.descripcion}</textarea></div>
-        <div class="campo-form"><label>Fallas extras</label><textarea id="falla-extras">${datos.fallasExtras}</textarea></div>
+        <div class="campo-form">
+            <label>Hora para entregar el trabajo</label>
+            <input id="falla-hora-entrega" type="time" min="08:00" max="18:00" step="1800" value="${horaDefecto}">
+            ${horasApartadas.size > 0 ? `
+            <div class="lista-horas-scroll" style="max-height: 90px; overflow-y: auto; margin-top: 8px; padding: 6px; border: 1px solid #d9d9d9; border-radius: 8px; background: #f9f9f9; font-size: 12px;">
+            ${[...horasApartadas].sort().map(hora => `
+                <div class="hora-ocupada-item" style="padding: 4px 6px; border-radius: 6px; color: #8a1c1c; background: #fdecea; margin-bottom: 4px;">
+                ${hora} - Ocupada
+                </div>
+            `).join('')}
+            </div>
+            ` : ''}
+        </div>
+        <div class="campo-form">
+            <label>Fecha y hora si no sale el mismo día</label>
+            <input id="falla-fecha-entrega" type="date" value="${datos.fechaEntrega}">
+            <input id="falla-hora-entrega-extra" type="time" value="${datos.horaEntregaAlterna}" style="margin-top: 8px;">
+        </div>
+        <div class="campo-form"><label>Precio de la reparación</label><input id="falla-precio" type="number" min="0" step="0.01" value="${datos.precioReparacion}"></div>
+        <div class="campo-form"><label>Adelanto</label><input id="falla-adelanto" type="number" min="0" step="0.01" value="${datos.adelanto}"></div>
         </div>
     `;
 
@@ -434,11 +659,12 @@ const DB_NAME = 'tallerDB';
         <div class="resumen-item"><span>Teléfono</span><span>${datos.telefono || '-'}</span></div>
         <div class="resumen-item"><span>Dirección</span><span>${datos.direccion || 'El progreso, Jutiapa'}</span></div>
         <div class="resumen-item"><span>Modelo</span><span>${datos.modelo || '-'}</span></div>
-        <div class="resumen-item"><span>IMEI</span><span>${datos.imei || 'Sin IMEI'}</span></div>
+        <div class="resumen-item"><span>Estado del teléfono</span><span>${datos.estadoTelefono || '-'}</span></div>
         <div class="resumen-item"><span>Accesorios</span><span>${datos.accesorios || '-'}</span></div>
         <div class="resumen-item"><span>Falla principal</span><span>${datos.fallaPrincipal || '-'}</span></div>
         <div class="resumen-item"><span>Descripción</span><span>${datos.descripcion || '-'}</span></div>
-        <div class="resumen-item"><span>Fallas extras</span><span>${datos.fallasExtras || '-'}</span></div>
+        <div class="resumen-item"><span>Hora entrega</span><span>${datos.horaEntrega || '-'}</span></div>
+        <div class="resumen-item"><span>Fecha y hora especial</span><span>${datos.fechaEntrega && datos.horaEntregaAlterna ? `${datos.fechaEntrega} ${datos.horaEntregaAlterna}` : '-'}</span></div>
         <div class="resumen-item"><span>Precio de la reparación</span><span>${datos.precioReparacion || '-'}</span></div>
         <div class="resumen-item"><span>Adelanto</span><span>${datos.adelanto || '-'}</span></div>
         </div>
@@ -466,12 +692,21 @@ const DB_NAME = 'tallerDB';
         return;
     }
 
+    const fechaEntregaSeleccionada = datos.fechaEntrega || new Date().toISOString().slice(0, 10);
+    const horaEntregaFinal = datos.fechaEntrega ? (datos.horaEntregaAlterna || datos.horaEntrega) : datos.horaEntrega;
+
+    if (!validarEntregaNoDuplicada(fechaEntregaSeleccionada, horaEntregaFinal)) {
+        return;
+    }
+
     const nuevaOrden = {
         numeroOrden: generarNumeroOrden(),
         equipo: datos.modelo || 'Equipo sin modelo',
         falla: datos.fallaPrincipal,
         fechaIngreso: new Date().toISOString().slice(0, 10),
         horaIngreso: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
+        fechaEntrega: fechaEntregaSeleccionada,
+        horaEntrega: horaEntregaFinal,
         estado: 'pendiente',
         cliente: {
         nombre: datos.nombre,
@@ -481,20 +716,22 @@ const DB_NAME = 'tallerDB';
         },
         equipoInfo: {
         modelo: datos.modelo || '',
-        imei: datos.imei || 'Sin IMEI',
+        descripcion: datos.estadoTelefono || '',
+        estadoTelefono: datos.estadoTelefono || '',
         accesorios: datos.accesorios || '',
         imagenes: datos.imagenes || []
         },
         fallaInfo: {
         descripcion: datos.descripcion,
-        observacion: datos.fallasExtras,
         prioridad: 'Sin definir',
         precioReparacion: datos.precioReparacion,
-        adelanto: datos.adelanto
+        adelanto: datos.adelanto,
+        fechaEntrega: fechaEntregaSeleccionada,
+        horaEntrega: horaEntregaFinal
         }
     };
 
-    ordenesEnMemoria.unshift(nuevaOrden);
+    ordenesEnMemoria.push(nuevaOrden);
     await guardarOrdenesEnDB();
     renderizarOrdenes(estadoFiltradoActual);
     cerrarModalNuevaOrden();
@@ -715,7 +952,7 @@ const DB_NAME = 'tallerDB';
     panelEquipo.innerHTML = `
         <h3>Información del equipo</h3>
         <div class="detalle-item"><span>Modelo</span><span>${ordenSeleccionada.equipoInfo.modelo}</span></div>
-        <div class="detalle-item"><span>IMEI</span><span>${ordenSeleccionada.equipoInfo.imei}</span></div>
+        <div class="detalle-item"><span>Estado del teléfono</span><span>${ordenSeleccionada.equipoInfo.descripcion || ordenSeleccionada.equipoInfo.estadoTelefono || '-'}</span></div>
         <div class="detalle-item"><span>Accesorios</span><span>${ordenSeleccionada.equipoInfo.accesorios}</span></div>
 
         <h3 style="margin-top: 16px;">Imágenes del equipo</h3>
@@ -728,11 +965,14 @@ const DB_NAME = 'tallerDB';
         <h3>Información de la falla</h3>
         <div class="detalle-item"><span>Falla principal</span><span>${ordenSeleccionada.falla}</span></div>
         <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion || '-'}</span></div>
-        <div class="detalle-item"><span>Fallas extras</span><span>${ordenSeleccionada.fallaInfo.observacion || '-'}</span></div>
+        <div class="detalle-item"><span>Hora de entrega</span><span>${ordenSeleccionada.fallaInfo.horaEntrega || ordenSeleccionada.horaEntrega || '-'}</span></div>
+        <div class="detalle-item"><span>Fecha de entrega</span><span>${ordenSeleccionada.fallaInfo.fechaEntrega || ordenSeleccionada.fechaEntrega || '-'}</span></div>
+        <div class="detalle-item"><span>Tiempo restante</span><span id="tiempo-restante-modal">${obtenerTiempoRestanteEntrega(ordenSeleccionada)}</span></div>
         <div class="detalle-item"><span>Precio de la reparación</span><span>${ordenSeleccionada.fallaInfo.precioReparacion || '-'}</span></div>
         <div class="detalle-item"><span>Adelanto</span><span>${ordenSeleccionada.fallaInfo.adelanto || '-'}</span></div>
 
         <div class="cambio-estado-wrapper">
+        <button class="btn-generar-comprobante" onclick="descargarComprobanteOrdenSeleccionada()">Descargar comprobante PDF</button>
         <button class="btn-cambiar-estado" onclick="toggleCambioEstado()">Cambiar estado</button>
         <div id="opciones-cambio-estado" class="opciones-cambio-estado">
             ${getOpcionesCambioEstado(ordenSeleccionada.estado)}
@@ -750,4 +990,26 @@ const DB_NAME = 'tallerDB';
 
     }
 
-    window.addEventListener('DOMContentLoaded', iniciarAplicacion);
+    window.descargarComprobanteOrdenSeleccionada = function() {
+    if (!ordenSeleccionada) {
+        alert('Abre una orden antes de descargar el comprobante.');
+        return;
+    }
+
+    generarPDFComprobante(ordenSeleccionada);
+    };
+
+    function actualizarTiempoRestanteModal() {
+    const tiempoModal = document.getElementById('tiempo-restante-modal');
+    if (!tiempoModal || !ordenSeleccionada) return;
+
+    tiempoModal.textContent = obtenerTiempoRestanteEntrega(ordenSeleccionada);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+    iniciarAplicacion();
+    setInterval(() => {
+        actualizarTiempoRestanteEnTarjetas();
+        actualizarTiempoRestanteModal();
+    }, 1000);
+    });
