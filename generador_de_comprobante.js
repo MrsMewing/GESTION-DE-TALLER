@@ -8,6 +8,13 @@ function escaparHTML(valor) {
     }[caracter]));
 }
 
+function formatearFechaComprobante(fecha) {
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha || 'Sin fecha';
+
+    const [año, mes, dia] = fecha.split('-');
+    return `${año}/${dia}/${mes}`;
+}
+
 function normalizarOrden(datosOrden) {
     const esOrdenDeLaApp = Boolean(datosOrden?.cliente || datosOrden?.equipoInfo || datosOrden?.fallaInfo);
     const cliente = esOrdenDeLaApp ? datosOrden.cliente || {} : datosOrden;
@@ -103,8 +110,8 @@ function generarPDFComprobante(datosOrden) {
             <div style="text-align: right;">
                 <h2>COMPROBANTE DE ENTREGA</h2>
                 <p><strong>No. Orden:</strong> #${texto(orden.numeroOrden)}</p>
-                <p><strong>Fecha de ingreso:</strong> ${texto(orden.fechaIngreso)}</p>
-                <p><strong>Fecha de entrega:</strong> ${texto(orden.fechaEntrega)}</p>
+                <p><strong>Fecha de ingreso:</strong> ${texto(formatearFechaComprobante(orden.fechaIngreso))}</p>
+                <p><strong>Fecha de entrega:</strong> ${texto(formatearFechaComprobante(orden.fechaEntrega))}</p>
             </div>
         </div>
 

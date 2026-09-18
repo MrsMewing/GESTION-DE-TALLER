@@ -172,6 +172,13 @@ const DB_NAME = 'tallerDB';
     return `${año}-${mes}-${dia}`;
     }
 
+    function formatearFechaOrden(fecha) {
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha || 'Sin fecha';
+
+    const [año, mes, dia] = fecha.split('-');
+    return `${año}/${dia}/${mes}`;
+    }
+
     function obtenerTiempoRestanteEntrega(orden) {
     const horaEntrega = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
     const fechaEntrega = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
@@ -320,7 +327,7 @@ const DB_NAME = 'tallerDB';
         tarjeta.innerHTML = `
         <div class="tarjeta-header">
             <span class="orden-numero">${orden.numeroOrden}</span>
-            <span class="orden-fecha">📅 ${orden.fechaIngreso} 🕒 ${orden.horaIngreso || '-'}</span>
+            <span class="orden-fecha">📅 ${formatearFechaOrden(orden.fechaIngreso)} 🕒 ${orden.horaIngreso || '-'}</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
             <div style="flex: 1;">
@@ -328,8 +335,7 @@ const DB_NAME = 'tallerDB';
             <p><strong>Falla principal:</strong> ${orden.falla}</p>
             </div>
             <div style="min-width: 160px; text-align: right; font-size: 12px; color: #dfe9f3;">
-            <div>📅 ${fechaEntrega}</div>
-            <div>🕒 ${horaEntrega}</div>
+            <div class="orden-fecha">📅 ${formatearFechaOrden(fechaEntrega)} 🕒 ${horaEntrega}</div>
             <div class="tiempo-restante-valor" style="margin-top: 6px; font-weight: 700; color: #f6c76e;">${tiempoRestante}</div>
             </div>
         </div>
@@ -692,7 +698,7 @@ const DB_NAME = 'tallerDB';
         return;
     }
 
-    const fechaEntregaSeleccionada = datos.fechaEntrega || new Date().toISOString().slice(0, 10);
+    const fechaEntregaSeleccionada = datos.fechaEntrega || obtenerFechaActualLocal();
     const horaEntregaFinal = datos.fechaEntrega ? (datos.horaEntregaAlterna || datos.horaEntrega) : datos.horaEntrega;
 
     if (!validarEntregaNoDuplicada(fechaEntregaSeleccionada, horaEntregaFinal)) {
@@ -703,7 +709,7 @@ const DB_NAME = 'tallerDB';
         numeroOrden: generarNumeroOrden(),
         equipo: datos.modelo || 'Equipo sin modelo',
         falla: datos.fallaPrincipal,
-        fechaIngreso: new Date().toISOString().slice(0, 10),
+        fechaIngreso: obtenerFechaActualLocal(),
         horaIngreso: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
         fechaEntrega: fechaEntregaSeleccionada,
         horaEntrega: horaEntregaFinal,
@@ -966,7 +972,7 @@ const DB_NAME = 'tallerDB';
         <div class="detalle-item"><span>Falla principal</span><span>${ordenSeleccionada.falla}</span></div>
         <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion || '-'}</span></div>
         <div class="detalle-item"><span>Hora de entrega</span><span>${ordenSeleccionada.fallaInfo.horaEntrega || ordenSeleccionada.horaEntrega || '-'}</span></div>
-        <div class="detalle-item"><span>Fecha de entrega</span><span>${ordenSeleccionada.fallaInfo.fechaEntrega || ordenSeleccionada.fechaEntrega || '-'}</span></div>
+        <div class="detalle-item"><span>Fecha de entrega</span><span>${formatearFechaOrden(ordenSeleccionada.fallaInfo.fechaEntrega || ordenSeleccionada.fechaEntrega)}</span></div>
         <div class="detalle-item"><span>Tiempo restante</span><span id="tiempo-restante-modal">${obtenerTiempoRestanteEntrega(ordenSeleccionada)}</span></div>
         <div class="detalle-item"><span>Precio de la reparación</span><span>${ordenSeleccionada.fallaInfo.precioReparacion || '-'}</span></div>
         <div class="detalle-item"><span>Adelanto</span><span>${ordenSeleccionada.fallaInfo.adelanto || '-'}</span></div>
