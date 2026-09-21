@@ -164,6 +164,26 @@ const DB_NAME = 'tallerDB';
     });
     }
 
+    function formatearHoraAMPM(hora) {
+    if (!hora) return 'Sin horario';
+
+    const textoHora = String(hora).trim().toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ');
+    const coincidencia = textoHora.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|A M|P M)?$/);
+    if (!coincidencia) return hora;
+
+    let horas = Number(coincidencia[1]);
+    const minutos = coincidencia[2];
+    const meridiano = coincidencia[3]?.replace(' ', '');
+
+    if (meridiano) {
+        horas = horas % 12 + (meridiano === 'PM' ? 12 : 0);
+    }
+
+    const meridianoFinal = horas >= 12 ? 'PM' : 'AM';
+    const horas12 = horas % 12 || 12;
+    return `${String(horas12).padStart(2, '0')}:${minutos} ${meridianoFinal}`;
+    }
+
     function obtenerFechaActualLocal() {
     const ahora = new Date();
     const año = ahora.getFullYear();
@@ -334,7 +354,7 @@ const DB_NAME = 'tallerDB';
         tarjeta.innerHTML = `
         <div class="tarjeta-header">
             <span class="orden-numero">${orden.numeroOrden}</span>
-            <span class="orden-fecha">📅 ${formatearFechaOrden(orden.fechaIngreso)} 🕒 ${orden.horaIngreso || '-'}</span>
+            <span class="orden-fecha">📅 ${formatearFechaOrden(orden.fechaIngreso)} 🕒 ${formatearHoraAMPM(orden.horaIngreso)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
             <div style="flex: 1;">
@@ -342,7 +362,7 @@ const DB_NAME = 'tallerDB';
             <p><strong>Falla principal:</strong> ${orden.falla}</p>
             </div>
             <div style="min-width: 160px; text-align: right; font-size: 12px; color: #dfe9f3;">
-            <div class="orden-fecha">📅 ${formatearFechaOrden(fechaEntrega)} 🕒 ${horaEntrega}</div>
+            <div class="orden-fecha">📅 ${formatearFechaOrden(fechaEntrega)} 🕒 ${formatearHoraAMPM(horaEntrega)}</div>
             <div class="tiempo-restante-valor" style="margin-top: 6px; font-weight: 700; color: #f6c76e;">${tiempoRestante}</div>
             </div>
         </div>
@@ -546,7 +566,7 @@ const DB_NAME = 'tallerDB';
 
     const horasApartadas = obtenerHorasApartadas(fechaSeleccionada);
     contenedor.innerHTML = horasApartadas.length > 0
-        ? horasApartadas.map(hora => `<div class="hora-ocupada-item"><span>${hora}</span><strong>Ocupada</strong></div>`).join('')
+        ? horasApartadas.map(hora => `<div class="hora-ocupada-item"><span>${formatearHoraAMPM(hora)}</span><strong>Ocupada</strong></div>`).join('')
         : '<p class="sin-horas-ocupadas">No hay órdenes para esta fecha.</p>';
     }
 
@@ -677,7 +697,6 @@ const DB_NAME = 'tallerDB';
 
     function actualizarModalNuevo() {
     const datos = obtenerDatosFormularioNuevaOrden();
-    const horasDisponibles = obtenerHorasDeEntrega();
     const horaActual = obtenerHoraActualLocal();
     const horaDefecto = datos.horaEntrega || horaActual;
     const fechaDefecto = datos.fechaEntrega || obtenerFechaActualLocal();
@@ -744,7 +763,7 @@ const DB_NAME = 'tallerDB';
         <div class="resumen-item"><span>Accesorios</span><span>${datos.accesorios || '-'}</span></div>
         <div class="resumen-item"><span>Falla principal</span><span>${datos.fallaPrincipal || '-'}</span></div>
         <div class="resumen-item"><span>Descripción</span><span>${datos.descripcion || '-'}</span></div>
-        <div class="resumen-item"><span>Hora entrega</span><span>${datos.horaEntrega || '-'}</span></div>
+        <div class="resumen-item"><span>Hora entrega</span><span>${formatearHoraAMPM(datos.horaEntrega)}</span></div>
         <div class="resumen-item"><span>Fecha de entrega</span><span>${fechaDefecto || '-'}</span></div>
         <div class="resumen-item"><span>Precio de la reparación</span><span>${datos.precioReparacion || '-'}</span></div>
         <div class="resumen-item"><span>Adelanto</span><span>${datos.adelanto || '-'}</span></div>
@@ -785,7 +804,7 @@ const DB_NAME = 'tallerDB';
         equipo: datos.modelo || 'Equipo sin modelo',
         falla: datos.fallaPrincipal,
         fechaIngreso: obtenerFechaActualLocal(),
-        horaIngreso: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
+        horaIngreso: obtenerHoraActualLocal(),
         fechaEntrega: fechaEntregaSeleccionada,
         horaEntrega: horaEntregaFinal,
         estado: 'pendiente',
