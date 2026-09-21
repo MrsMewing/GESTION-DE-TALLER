@@ -99,6 +99,9 @@ body {
       .tarjeta-orden.pendiente { border-left-color: #ff9800; }
       .tarjeta-orden.proceso { border-left-color: #3c50e0; }
       .tarjeta-orden.terminada { border-left-color: #10b981; }
+      .tarjeta-orden.esperando_repuesto { border-left-color: #f59e0b; }
+      .tarjeta-orden.esperando_confirmacion { border-left-color: #a855f7; }
+      .tarjeta-orden.entregado { border-left-color: #10b981; }
 
       .tarjeta-header {
         display: flex;
@@ -141,9 +144,20 @@ body {
         margin-top: 10px !important;
       }
 
-      .txt-pendiente { color: #ff9800; }
-      .txt-proceso { color: #3c50e0; }
-      .txt-terminada { color: #10b981; }
+      .estado-etiqueta {
+        display: inline-block;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.3px;
+      }
+
+      .estado-pendiente { background: #ff9800; color: #1f1300; }
+      .estado-proceso { background: #3c50e0; color: #ffffff; }
+      .estado-terminada { background: #10b981; color: #052e22; }
+      .estado-esperando_repuesto { background: #f59e0b; color: #241500; }
+      .estado-esperando_confirmacion { background: #a855f7; color: #ffffff; }
+      .estado-entregado { background: #14b8a6; color: #042f2e; }
 
       .mensaje-vacio { text-align: center; color: #8a99ad; font-style: italic; padding: 20px; }
 
@@ -325,6 +339,48 @@ body {
       .campo-form textarea {
         resize: vertical;
         min-height: 95px;
+      }
+
+      .lista-horas-ocupadas {
+        display: grid;
+        gap: 6px;
+        max-height: 150px;
+        overflow-y: auto;
+        margin-top: 8px;
+        padding: 8px;
+        border: 1px solid #3b4b64;
+        border-radius: 8px;
+        background: #182333;
+      }
+
+      .hora-ocupada-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-left: 4px solid #ef4444;
+        border-radius: 6px;
+        background: #3a232b;
+        color: #fecaca;
+        font-size: 13px;
+        font-weight: bold;
+      }
+
+      .hora-ocupada-item strong {
+        color: #fca5a5;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .sin-horas-ocupadas {
+        margin: 0;
+        padding: 10px;
+        border: 1px dashed #4b6585;
+        border-radius: 6px;
+        color: #b7c5d8;
+        font-size: 13px;
+        text-align: center;
       }
 
       .resumen-lista {
@@ -590,3 +646,66 @@ body {
       .opcion-estado[data-estado="pendiente"] { background: #ff9800; color: #000; }
       .opcion-estado[data-estado="proceso"] { background: #3c50e0; color: #fff; }
       .opcion-estado[data-estado="terminada"] { background: #10b981; color: #fff; }
+      .opcion-estado[data-estado="esperando_repuesto"] { background: #f59e0b; color: #111827; }
+      .opcion-estado[data-estado="esperando_confirmacion"] { background: #a855f7; color: #fff; }
+      .opcion-estado[data-estado="entregado"] { background: #10b981; color: #fff; }
+
+      .edicion-entrega {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 14px 0;
+        padding: 12px;
+        border: 1px solid #2e3a50;
+        border-radius: 8px;
+        background: #202b3d;
+      }
+
+      .edicion-entrega .campo-form { margin: 0; }
+      .edicion-entrega .campo-form label {
+        display: block;
+        margin-bottom: 6px;
+        color: #f6c76e;
+        font-size: 13px;
+        font-weight: bold;
+      }
+
+      .edicion-entrega .campo-form label span {
+        color: #a9b7c9;
+        font-size: 11px;
+        font-weight: normal;
+      }
+
+      .edicion-entrega input {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 42px;
+        padding: 8px 10px;
+        border: 2px solid #3c50e0;
+        border-radius: 6px;
+        background: #101827;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: bold;
+        color-scheme: dark;
+      }
+
+      .edicion-entrega input:focus {
+        outline: 2px solid #f6c76e;
+        outline-offset: 1px;
+      }
+
+      .btn-guardar-entrega {
+        grid-column: 1 / -1;
+        background: #10b981;
+        color: #052e22;
+        border: none;
+        border-radius: 6px;
+        padding: 9px 12px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      @media (max-width: 480px) {
+        .edicion-entrega { grid-template-columns: 1fr; }
+      }

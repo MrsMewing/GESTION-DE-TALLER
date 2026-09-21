@@ -223,7 +223,6 @@ const DB_NAME = 'tallerDB';
 
     function obtenerFechasOrden(orden) {
     return [
-        orden?.fechaIngreso,
         orden?.fechaEntrega,
         orden?.fallaInfo?.fechaEntrega
     ].filter(Boolean);
@@ -289,7 +288,12 @@ const DB_NAME = 'tallerDB';
     contenedor.innerHTML = "";
 
     const ordenesFiltradas = ordenesEnMemoria.filter(orden => {
-        const coincideEstado = orden.estado === estadoFiltrado;
+        const estadosDeLaSeccion = {
+            pendiente: ['pendiente', 'esperando_repuesto', 'esperando_confirmacion'],
+            proceso: ['proceso'],
+            terminada: ['terminada', 'entregado']
+        };
+        const coincideEstado = estadosDeLaSeccion[estadoFiltrado]?.includes(orden.estado);
         if (!coincideEstado) return false;
 
         if (modoFiltroFecha === 'todas') return true;
@@ -319,6 +323,9 @@ const DB_NAME = 'tallerDB';
         if (orden.estado === 'pendiente') textoEstadoVisual = "Pendiente de revisión";
         if (orden.estado === 'proceso') textoEstadoVisual = "En proceso de reparación";
         if (orden.estado === 'terminada') textoEstadoVisual = "Terminada / Lista para entrega";
+        if (orden.estado === 'esperando_repuesto') textoEstadoVisual = "Esperando repuesto";
+        if (orden.estado === 'esperando_confirmacion') textoEstadoVisual = "Esperando confirmación";
+        if (orden.estado === 'entregado') textoEstadoVisual = "Entregado";
 
         const horaEntrega = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega || 'Sin horario';
         const fechaEntrega = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega || 'Sin fecha';
@@ -339,7 +346,7 @@ const DB_NAME = 'tallerDB';
             <div class="tiempo-restante-valor" style="margin-top: 6px; font-weight: 700; color: #f6c76e;">${tiempoRestante}</div>
             </div>
         </div>
-        <p class="estado-texto txt-${orden.estado}">● ${textoEstadoVisual}</p>
+        <p class="estado-texto"><span class="estado-etiqueta estado-${orden.estado}">● ${textoEstadoVisual}</span></p>
         <button class="btn-eliminar-orden-tarjeta" onclick="event.stopPropagation(); eliminarOrdenDesdeTarjeta('${orden.numeroOrden}')">Eliminar</button>
         `;
 
@@ -418,18 +425,37 @@ const DB_NAME = 'tallerDB';
     indiceSeccionNueva = 0;
     fotosNuevaOrden = [];
     document.getElementById('modal-nueva-orden').classList.remove('modal-oculto');
+
+    const fechaEntrega = document.getElementById('falla-fecha-entrega');
+    const horaEntrega = document.getElementById('falla-hora-entrega');
+    if (fechaEntrega) fechaEntrega.value = obtenerFechaActualLocal();
+    if (horaEntrega) horaEntrega.value = obtenerHoraActualLocal();
+
     actualizarModalNuevo();
     }
 
     function cerrarModalNuevaOrden(event) {
     if (event && event.target.classList.contains('modal-overlay')) {
         document.getElementById('modal-nueva-orden').classList.add('modal-oculto');
+        limpiarFormularioNuevaOrden();
         return;
     }
 
     if (!event) {
         document.getElementById('modal-nueva-orden').classList.add('modal-oculto');
+        limpiarFormularioNuevaOrden();
     }
+    }
+
+    function limpiarFormularioNuevaOrden() {
+    document.querySelectorAll('#modal-nueva-orden input, #modal-nueva-orden textarea').forEach(campo => {
+        if (campo.type === 'file') {
+        campo.value = '';
+        } else {
+        campo.value = '';
+        }
+    });
+    fotosNuevaOrden = [];
     }
 
     function mostrarSeccionNueva(index) {
@@ -450,7 +476,10 @@ const DB_NAME = 'tallerDB';
     const estadosDisponibles = [
         { key: 'pendiente', label: 'Pendiente' },
         { key: 'proceso', label: 'En proceso' },
-        { key: 'terminada', label: 'Terminada' }
+        { key: 'esperando_repuesto', label: 'Esperando repuesto' },
+        { key: 'esperando_confirmacion', label: 'Esperando confirmación' },
+        { key: 'terminada', label: 'Terminada' },
+        { key: 'entregado', label: 'Entregado' }
     ];
 
     return estadosDisponibles
@@ -494,19 +523,36 @@ const DB_NAME = 'tallerDB';
     return horas;
     }
 
-    function obtenerHorasApartadas() {
+    function obtenerHorasApartadas(fechaSeleccionada) {
     const horasReservadas = new Set();
+
+    if (!fechaSeleccionada) return [];
 
     ordenesEnMemoria.forEach(orden => {
         const fechaGuardada = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
         const horaGuardada = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
 
-        if (!fechaGuardada || !horaGuardada) return;
+        if (fechaGuardada !== fechaSeleccionada || !horaGuardada) return;
 
         horasReservadas.add(horaGuardada);
     });
 
     return [...horasReservadas].sort();
+    }
+
+    function renderizarHorasApartadas(fechaSeleccionada) {
+    const contenedor = document.getElementById('lista-horas-ocupadas');
+    if (!contenedor) return;
+
+    const horasApartadas = obtenerHorasApartadas(fechaSeleccionada);
+    contenedor.innerHTML = horasApartadas.length > 0
+        ? horasApartadas.map(hora => `<div class="hora-ocupada-item"><span>${hora}</span><strong>Ocupada</strong></div>`).join('')
+        : '<p class="sin-horas-ocupadas">No hay órdenes para esta fecha.</p>';
+    }
+
+    function actualizarHorasOcupadasNuevaOrden() {
+    const fechaSeleccionada = document.getElementById('falla-fecha-entrega')?.value || '';
+    renderizarHorasApartadas(fechaSeleccionada);
     }
 
     function validarEntregaNoDuplicada(fechaEntrega, horaEntrega) {
@@ -534,7 +580,6 @@ const DB_NAME = 'tallerDB';
     const direccion = document.getElementById('cliente-direccion')?.value?.trim() || 'El progreso, Jutiapa';
     const estadoTelefono = document.getElementById('equipo-estado')?.value?.trim() || '';
     const fechaEntrega = document.getElementById('falla-fecha-entrega')?.value?.trim() || '';
-    const horaEntregaAlterna = document.getElementById('falla-hora-entrega-extra')?.value?.trim() || '';
 
     return {
         nombre: document.getElementById('cliente-nombre')?.value?.trim() || '',
@@ -547,11 +592,48 @@ const DB_NAME = 'tallerDB';
         descripcion: document.getElementById('falla-descripcion')?.value?.trim() || '',
         horaEntrega: document.getElementById('falla-hora-entrega')?.value?.trim() || '',
         fechaEntrega,
-        horaEntregaAlterna,
         precioReparacion: document.getElementById('falla-precio')?.value?.trim() || '',
         adelanto: document.getElementById('falla-adelanto')?.value?.trim() || '',
         imagenes: [...fotosNuevaOrden]
     };
+    }
+
+    async function actualizarEntregaOrden() {
+    if (!ordenSeleccionada) return;
+
+    const fechaEntrega = document.getElementById('orden-fecha-entrega-editar')?.value || '';
+    const horaEntrega = document.getElementById('orden-hora-entrega-editar')?.value || '';
+    if (!fechaEntrega || !horaEntrega) {
+        alert('Completa la fecha y hora de entrega.');
+        return;
+    }
+
+    const fechaHoraNueva = `${fechaEntrega}T${horaEntrega}`;
+    const yaExiste = ordenesEnMemoria.some(orden => {
+        if (orden.numeroOrden === ordenSeleccionada.numeroOrden) return false;
+        const fechaGuardada = orden?.fallaInfo?.fechaEntrega || orden?.fechaEntrega;
+        const horaGuardada = orden?.fallaInfo?.horaEntrega || orden?.horaEntrega;
+        return fechaGuardada && horaGuardada && `${fechaGuardada}T${horaGuardada}` === fechaHoraNueva;
+    });
+
+    if (yaExiste) {
+        alert(`La fecha y hora ${fechaEntrega} ${horaEntrega} ya están apartadas. Elige otra.`);
+        return;
+    }
+
+    const ordenEnBase = ordenesEnMemoria.find(orden => orden.numeroOrden === ordenSeleccionada.numeroOrden);
+    if (!ordenEnBase) return;
+
+    ordenEnBase.fechaEntrega = fechaEntrega;
+    ordenEnBase.horaEntrega = horaEntrega;
+    ordenEnBase.fallaInfo = ordenEnBase.fallaInfo || {};
+    ordenEnBase.fallaInfo.fechaEntrega = fechaEntrega;
+    ordenEnBase.fallaInfo.horaEntrega = horaEntrega;
+    ordenSeleccionada = ordenEnBase;
+
+    await guardarOrdenesEnDB();
+    renderizarOrdenes(estadoFiltradoActual);
+    actualizarModal();
     }
 
     function manejarSeleccionFotos(event) {
@@ -596,9 +678,9 @@ const DB_NAME = 'tallerDB';
     function actualizarModalNuevo() {
     const datos = obtenerDatosFormularioNuevaOrden();
     const horasDisponibles = obtenerHorasDeEntrega();
-    const horasApartadas = new Set(obtenerHorasApartadas());
     const horaActual = obtenerHoraActualLocal();
     const horaDefecto = datos.horaEntrega || horaActual;
+    const fechaDefecto = datos.fechaEntrega || obtenerFechaActualLocal();
 
     document.getElementById('panel-nueva-cliente').innerHTML = `
         <h3>Información de cliente</h3>
@@ -638,25 +720,18 @@ const DB_NAME = 'tallerDB';
         <div class="campo-form">
             <label>Hora para entregar el trabajo</label>
             <input id="falla-hora-entrega" type="time" min="08:00" max="18:00" step="1800" value="${horaDefecto}">
-            ${horasApartadas.size > 0 ? `
-            <div class="lista-horas-scroll" style="max-height: 90px; overflow-y: auto; margin-top: 8px; padding: 6px; border: 1px solid #d9d9d9; border-radius: 8px; background: #f9f9f9; font-size: 12px;">
-            ${[...horasApartadas].sort().map(hora => `
-                <div class="hora-ocupada-item" style="padding: 4px 6px; border-radius: 6px; color: #8a1c1c; background: #fdecea; margin-bottom: 4px;">
-                ${hora} - Ocupada
-                </div>
-            `).join('')}
-            </div>
-            ` : ''}
         </div>
         <div class="campo-form">
-            <label>Fecha y hora si no sale el mismo día</label>
-            <input id="falla-fecha-entrega" type="date" value="${datos.fechaEntrega}">
-            <input id="falla-hora-entrega-extra" type="time" value="${datos.horaEntregaAlterna}" style="margin-top: 8px;">
+            <label>Fecha de entrega</label>
+            <input id="falla-fecha-entrega" type="date" value="${fechaDefecto}" onchange="actualizarHorasOcupadasNuevaOrden()">
+            <div id="lista-horas-ocupadas" class="lista-horas-ocupadas"></div>
         </div>
         <div class="campo-form"><label>Precio de la reparación</label><input id="falla-precio" type="number" min="0" step="0.01" value="${datos.precioReparacion}"></div>
         <div class="campo-form"><label>Adelanto</label><input id="falla-adelanto" type="number" min="0" step="0.01" value="${datos.adelanto}"></div>
         </div>
     `;
+
+    renderizarHorasApartadas(fechaDefecto);
 
     document.getElementById('panel-nueva-resumen').innerHTML = `
         <h3>Resumen de la orden</h3>
@@ -670,7 +745,7 @@ const DB_NAME = 'tallerDB';
         <div class="resumen-item"><span>Falla principal</span><span>${datos.fallaPrincipal || '-'}</span></div>
         <div class="resumen-item"><span>Descripción</span><span>${datos.descripcion || '-'}</span></div>
         <div class="resumen-item"><span>Hora entrega</span><span>${datos.horaEntrega || '-'}</span></div>
-        <div class="resumen-item"><span>Fecha y hora especial</span><span>${datos.fechaEntrega && datos.horaEntregaAlterna ? `${datos.fechaEntrega} ${datos.horaEntregaAlterna}` : '-'}</span></div>
+        <div class="resumen-item"><span>Fecha de entrega</span><span>${fechaDefecto || '-'}</span></div>
         <div class="resumen-item"><span>Precio de la reparación</span><span>${datos.precioReparacion || '-'}</span></div>
         <div class="resumen-item"><span>Adelanto</span><span>${datos.adelanto || '-'}</span></div>
         </div>
@@ -699,7 +774,7 @@ const DB_NAME = 'tallerDB';
     }
 
     const fechaEntregaSeleccionada = datos.fechaEntrega || obtenerFechaActualLocal();
-    const horaEntregaFinal = datos.fechaEntrega ? (datos.horaEntregaAlterna || datos.horaEntrega) : datos.horaEntrega;
+    const horaEntregaFinal = datos.horaEntrega || obtenerHoraActualLocal();
 
     if (!validarEntregaNoDuplicada(fechaEntregaSeleccionada, horaEntregaFinal)) {
         return;
@@ -971,8 +1046,11 @@ const DB_NAME = 'tallerDB';
         <h3>Información de la falla</h3>
         <div class="detalle-item"><span>Falla principal</span><span>${ordenSeleccionada.falla}</span></div>
         <div class="detalle-item"><span>Descripción</span><span>${ordenSeleccionada.fallaInfo.descripcion || '-'}</span></div>
-        <div class="detalle-item"><span>Hora de entrega</span><span>${ordenSeleccionada.fallaInfo.horaEntrega || ordenSeleccionada.horaEntrega || '-'}</span></div>
-        <div class="detalle-item"><span>Fecha de entrega</span><span>${formatearFechaOrden(ordenSeleccionada.fallaInfo.fechaEntrega || ordenSeleccionada.fechaEntrega)}</span></div>
+        <div class="edicion-entrega">
+            <div class="campo-form"><label for="orden-hora-entrega-editar">Hora de entrega <span>(editable)</span></label><input id="orden-hora-entrega-editar" type="time" value="${ordenSeleccionada.fallaInfo.horaEntrega || ordenSeleccionada.horaEntrega || ''}"></div>
+            <div class="campo-form"><label for="orden-fecha-entrega-editar">Fecha de entrega <span>(editable)</span></label><input id="orden-fecha-entrega-editar" type="date" value="${ordenSeleccionada.fallaInfo.fechaEntrega || ordenSeleccionada.fechaEntrega || ''}"></div>
+            <button class="btn-guardar-entrega" onclick="actualizarEntregaOrden()">Guardar fecha y hora</button>
+        </div>
         <div class="detalle-item"><span>Tiempo restante</span><span id="tiempo-restante-modal">${obtenerTiempoRestanteEntrega(ordenSeleccionada)}</span></div>
         <div class="detalle-item"><span>Precio de la reparación</span><span>${ordenSeleccionada.fallaInfo.precioReparacion || '-'}</span></div>
         <div class="detalle-item"><span>Adelanto</span><span>${ordenSeleccionada.fallaInfo.adelanto || '-'}</span></div>
